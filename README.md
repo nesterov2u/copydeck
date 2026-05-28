@@ -19,9 +19,9 @@ CopyDeck is a compact Tauri desktop utility for designers who need to move many 
 This workspace currently needs Node package tooling and Rust installed before it can run:
 
 ```sh
-npm install
-npm run dev
-npm run tauri dev
+pnpm install
+pnpm run dev
+pnpm run tauri dev
 ```
 
 The frontend dev server is configured for `http://localhost:1420`.

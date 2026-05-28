@@ -1,5 +1,3 @@
-import * as XLSX from "xlsx";
-
 export async function readTextFile(file: File) {
   return await file.text();
 }
@@ -12,6 +10,7 @@ export async function readDocxFile(file: File) {
 }
 
 export async function readSpreadsheetFile(file: File, rowMode = false) {
+  const XLSX = await import("xlsx");
   const arrayBuffer = await file.arrayBuffer();
   const workbook = XLSX.read(arrayBuffer, { type: "array" });
   const worksheet = workbook.Sheets[workbook.SheetNames[0]];

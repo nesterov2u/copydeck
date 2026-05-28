@@ -105,7 +105,7 @@ Keep the app light:
 - avoid storing full original files when blocks and metadata are enough
 - consider list virtualization only when real documents with many hundreds/thousands of blocks show UI lag
 
-`mammoth` is already dynamically imported. `xlsx` should also be made dynamic if bundle size becomes a concern.
+`mammoth` and `xlsx` are dynamically imported so DOCX/XLSX parsing does not inflate the initial application chunk.
 
 ## Known Gaps / Next Work
 
@@ -115,5 +115,4 @@ Keep the app light:
 - Add real settings screen for configurable hotkeys and theme.
 - Add proper empty/error states for imports.
 - Add tests for parser and queue navigation.
-- Consider splitting `src/App.tsx` into components once behavior stabilizes.
-
+- Continue splitting components only when it reduces real complexity; `src/App.tsx` is now a composition layer.
