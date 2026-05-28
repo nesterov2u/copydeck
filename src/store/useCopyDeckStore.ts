@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import type { FilterMode, ParseMode, TextBlock, ThemeMode, ToastState } from "../types";
 import { parseTextToBlocks } from "../services/parser";
 import { readClipboard, writeClipboard } from "../services/clipboard";
+import { getNextBlockId, getPreviousBlockId } from "../services/queue";
 import { detectLanguage, translateText } from "../services/translation";
 
 type CopyDeckState = {
@@ -111,18 +112,11 @@ export const useCopyDeckStore = create<CopyDeckState>()(
         })),
       goNext: () => {
         const { blocks, currentId } = get();
-        const currentIndex = Math.max(0, blocks.findIndex((block) => block.id === currentId));
-        const nextPending =
-          blocks.slice(currentIndex + 1).find((block) => block.status === "pending") ??
-          blocks.slice(currentIndex + 1)[0] ??
-          blocks[0];
-        set({ currentId: nextPending?.id ?? null });
+        set({ currentId: getNextBlockId(blocks, currentId) });
       },
       goPrevious: () => {
         const { blocks, currentId } = get();
-        const currentIndex = Math.max(0, blocks.findIndex((block) => block.id === currentId));
-        const previous = blocks[currentIndex - 1] ?? blocks[blocks.length - 1];
-        set({ currentId: previous?.id ?? null });
+        set({ currentId: getPreviousBlockId(blocks, currentId) });
       },
       translateBlock: async (id) => {
         const block = get().blocks.find((item) => item.id === id);

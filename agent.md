@@ -31,6 +31,7 @@ Use pnpm.
 
 ```sh
 pnpm install
+pnpm test
 pnpm run build
 pnpm run dev --host 127.0.0.1
 ```
@@ -110,9 +111,10 @@ Keep the app light:
 ## Known Gaps / Next Work
 
 - Verify Tauri native window once Rust/Cargo are available.
+- Current environment had a partial/failed Rust installation attempt: `cargo` became available, but `rustc` still reported a missing manifest. Fix with a clean Rust toolchain before native packaging.
 - Make XLSX import fully mode-aware: cell, row, selected column.
 - Improve translation UX so click can pin/show popover if desired; current version is a lightweight hover/click placeholder.
 - Add real settings screen for configurable hotkeys and theme.
 - Add proper empty/error states for imports.
-- Add tests for parser and queue navigation.
+- Expand tests beyond the existing parser and queue navigation coverage.
 - Continue splitting components only when it reduces real complexity; `src/App.tsx` is now a composition layer.
