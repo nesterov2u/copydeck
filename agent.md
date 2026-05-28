@@ -39,7 +39,8 @@ pnpm run dev --host 127.0.0.1
 For Tauri, once Rust/Cargo are installed:
 
 ```sh
-pnpm run tauri dev
+cargo tauri dev
+cargo tauri build
 ```
 
 In the current Codex environment, pnpm was installed under:
@@ -67,6 +68,13 @@ onlyBuiltDependencies:
 ```
 
 This is intentional for the Codex/macOS environment where signed Node may reject native Rollup `.node` binaries. Keep it unless normal Rollup builds are verified.
+
+The same signed Node issue can block the npm Tauri CLI wrapper. Prefer cargo-installed Tauri CLI in this environment:
+
+```sh
+cargo install tauri-cli --version 2.11.2 --locked
+cargo tauri build
+```
 
 ## Implementation Rules
 
@@ -108,10 +116,16 @@ Keep the app light:
 
 `mammoth` and `xlsx` are dynamically imported so DOCX/XLSX parsing does not inflate the initial application chunk.
 
+## Build Status
+
+- `pnpm test` passes.
+- `pnpm run build` passes.
+- `cargo tauri build` has produced a macOS `.app` and `.dmg`.
+- The generated bundles are ignored under `src-tauri/target`.
+
 ## Known Gaps / Next Work
 
-- Verify Tauri native window once Rust/Cargo are available.
-- Current environment had a partial/failed Rust installation attempt: `cargo` became available, but `rustc` still reported a missing manifest. Fix with a clean Rust toolchain before native packaging.
+- Smoke-test the generated `.app` interactively on macOS.
 - Make XLSX import fully mode-aware: cell, row, selected column.
 - Improve translation UX so click can pin/show popover if desired; current version is a lightweight hover/click placeholder.
 - Add real settings screen for configurable hotkeys and theme.

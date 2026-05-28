@@ -23,7 +23,7 @@ pnpm install
 pnpm run dev
 pnpm test
 pnpm run build
-pnpm run tauri dev
+cargo tauri dev
 ```
 
 The frontend dev server is configured for `http://localhost:1420`.
@@ -38,3 +38,17 @@ pnpm run build
 ```
 
 Native Tauri builds require a working Rust toolchain (`rustc` and `cargo`).
+
+## Native Build
+
+In the Codex environment, use the cargo-installed Tauri CLI because the npm wrapper can be blocked by signed Node native bindings:
+
+```sh
+cargo install tauri-cli --version 2.11.2 --locked
+cargo tauri build
+```
+
+The latest verified build produced:
+
+- `src-tauri/target/release/bundle/macos/CopyDeck.app`
+- `src-tauri/target/release/bundle/dmg/CopyDeck_0.1.0_aarch64.dmg`

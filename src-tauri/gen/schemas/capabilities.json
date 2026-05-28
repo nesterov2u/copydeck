@@ -1,0 +1,1 @@
+{"default":{"identifier":"default","description":"Default permissions for CopyDeck MVP","local":true,"windows":["main"],"permissions":["core:default","clipboard-manager:allow-read-text","clipboard-manager:allow-write-text","dialog:default","fs:allow-read-file","global-shortcut:allow-register","global-shortcut:allow-unregister","opener:default"]}}
