@@ -41,6 +41,9 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version 2.11.2 --locked
+
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
@@ -59,4 +62,5 @@ jobs:
           releaseBody: "CopyDeck release with signed updater artifacts."
           releaseDraft: false
           prerelease: false
+          tauriScript: cargo tauri
           args: --target ${{ matrix.target }} --bundles app
