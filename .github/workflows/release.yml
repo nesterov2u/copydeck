@@ -57,6 +57,6 @@ jobs:
           tagName: v__VERSION__
           releaseName: CopyDeck v__VERSION__
           releaseBody: "CopyDeck release with signed updater artifacts."
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           args: --target ${{ matrix.target }} --bundles app
