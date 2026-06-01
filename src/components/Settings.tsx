@@ -1,15 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useCopyDeckStore } from "../store/useCopyDeckStore";
 import type { ParseMode, SpreadsheetImportMode, ThemeMode } from "../types";
 import { Icon, type IconName } from "./Icon";
 
-type SettingsSection = "general" | "import" | "translation" | "storage";
+type SettingsSection = "general" | "import" | "translation" | "storage" | "update";
 
 const sections: Array<{ id: SettingsSection; label: string; icon: IconName }> = [
   { id: "general", label: "General", icon: "settings" },
   { id: "import", label: "Import", icon: "fileArrowLeft" },
   { id: "translation", label: "Translation", icon: "language" },
-  { id: "storage", label: "Storage", icon: "database" }
+  { id: "storage", label: "Storage", icon: "database" },
+  { id: "update", label: "Update", icon: "worldBolt" }
 ];
 
 export function Settings() {
@@ -41,6 +42,7 @@ export function Settings() {
           {activeSection === "import" && <ImportSettings />}
           {activeSection === "translation" && <TranslationSettings />}
           {activeSection === "storage" && <StorageSettings />}
+          {activeSection === "update" && <UpdateSettings />}
         </div>
       </div>
     </section>
@@ -49,8 +51,6 @@ export function Settings() {
 
 function GeneralSettings() {
   const store = useCopyDeckStore();
-  const checking = store.updateStatus === "checking";
-  const updating = store.updateStatus === "updating";
 
   return (
     <>
@@ -66,32 +66,6 @@ function GeneralSettings() {
 
       <SettingSwitch label="Always on top" checked={store.pinned} onChange={store.setPinned} />
       <SettingSwitch label="Compact mode" checked={store.compactMode} onChange={store.setCompactMode} />
-
-      <div className="setting-row stack">
-        <span>Updates</span>
-        <div className="settings-action-stack">
-          <button
-            className="settings-action-button"
-            disabled={checking || updating}
-            onClick={store.checkForUpdates}
-          >
-            {checking ? "Checking..." : "Check updates"}
-          </button>
-
-          {store.availableUpdate && (
-            <>
-              <div className="setting-note">Version {store.availableUpdate.version} is ready.</div>
-              <button
-                className="settings-action-button primary"
-                disabled={updating}
-                onClick={store.installUpdate}
-              >
-                {updating ? "Installing..." : "Install & restart"}
-              </button>
-            </>
-          )}
-        </div>
-      </div>
     </>
   );
 }
@@ -186,6 +160,49 @@ function StorageSettings() {
     <button className="clear-cache-button" onClick={clearCache}>
       Clear Cache
     </button>
+  );
+}
+
+function UpdateSettings() {
+  const store = useCopyDeckStore();
+  const [appVersion, setAppVersion] = useState("0.1.1");
+  const checking = store.updateStatus === "checking";
+  const updating = store.updateStatus === "updating";
+
+  useEffect(() => {
+    import("@tauri-apps/api/app")
+      .then(({ getVersion }) => getVersion())
+      .then(setAppVersion)
+      .catch(() => undefined);
+  }, []);
+
+  return (
+    <div className="setting-row stack">
+      <span>App update</span>
+      <div className="setting-note">Current version {appVersion}</div>
+      <div className="settings-action-stack">
+        <button
+          className="settings-action-button"
+          disabled={checking || updating}
+          onClick={store.checkForUpdates}
+        >
+          {checking ? "Checking..." : "Check for update"}
+        </button>
+
+        {store.availableUpdate && (
+          <>
+            <div className="setting-note">Version {store.availableUpdate.version} is ready.</div>
+            <button
+              className="settings-action-button primary"
+              disabled={updating}
+              onClick={store.installUpdate}
+            >
+              {updating ? "Installing..." : "Install & restart"}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 

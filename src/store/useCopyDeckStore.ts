@@ -14,7 +14,10 @@ import { parseTextToBlocks } from "../services/parser";
 import { readClipboard, writeClipboard } from "../services/clipboard";
 import { getNextBlockId, getPreviousBlockId } from "../services/queue";
 import { detectLanguage, translateText } from "../services/translation";
-import { checkForAppUpdate, installPendingAppUpdate } from "../services/updater";
+import {
+  checkForAppUpdate,
+  installPendingAppUpdate
+} from "../services/updater";
 
 type CopyDeckState = {
   blocks: TextBlock[];
@@ -239,7 +242,7 @@ export const useCopyDeckStore = create<CopyDeckState>()(
           set({
             updateStatus: "idle",
             availableUpdate: null,
-            toast: { message: "Update check failed", tone: "error" }
+            toast: { message: "No update available yet", tone: "info" }
           });
         }
       },
