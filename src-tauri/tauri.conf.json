@@ -10,17 +10,23 @@
     "frontendDist": "../dist"
   },
   "app": {
+    "macOSPrivateApi": true,
     "windows": [
       {
         "title": "CopyDeck",
-        "width": 420,
-        "height": 760,
-        "minWidth": 360,
-        "minHeight": 650,
+        "width": 350,
+        "height": 696,
+        "minWidth": 350,
+        "maxWidth": 350,
+        "minHeight": 500,
+        "center": true,
+        "visible": true,
         "resizable": true,
         "fullscreen": false,
         "decorations": false,
         "transparent": true,
+        "shadow": true,
+        "backgroundColor": "#00000000",
         "alwaysOnTop": false
       }
     ],
@@ -30,6 +36,22 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all"
+    "createUpdaterArtifacts": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEUyQTJBNjlCNTFGQ0Y2QTMKUldTajl2eFJtNmFpNGxVeXlzNm1GblZ3QVEzbHliQmFsUGl4NmNPNU5KVERmR3JlSXdwc1dBdVUK",
+      "endpoints": [
+        "https://github.com/nesterov2u/copydeck/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

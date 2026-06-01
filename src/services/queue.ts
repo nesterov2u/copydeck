@@ -4,12 +4,7 @@ export function getNextBlockId(blocks: TextBlock[], currentId: string | null) {
   if (!blocks.length) return null;
 
   const currentIndex = normalizedCurrentIndex(blocks, currentId);
-  const nextPending =
-    blocks.slice(currentIndex + 1).find((block) => block.status === "pending") ??
-    blocks.slice(currentIndex + 1)[0] ??
-    blocks[0];
-
-  return nextPending?.id ?? null;
+  return blocks[currentIndex + 1]?.id ?? blocks[0]?.id ?? null;
 }
 
 export function getPreviousBlockId(blocks: TextBlock[], currentId: string | null) {

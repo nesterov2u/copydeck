@@ -2,7 +2,7 @@
 
 Use this file as local working guidance for future coding agents in this project.
 
-## How To Think About This Project
+## Product Shape
 
 CopyDeck is a compact native-feeling desktop utility for designers, not a document editor and not an AI content tool.
 
@@ -36,28 +36,17 @@ pnpm run build
 pnpm run dev --host 127.0.0.1
 ```
 
-For Tauri, once Rust/Cargo are installed:
+In this Codex/macOS environment, prefer the cargo-installed Tauri CLI:
 
 ```sh
-cargo tauri dev
-cargo tauri build
+PATH=/Users/andrew/.cargo/bin:$PATH /Users/andrew/.cargo/bin/cargo-tauri build
 ```
 
-In the current Codex environment, pnpm was installed under:
+`pnpm tauri build` can fail because signed Node rejects native Tauri CLI bindings.
 
-```sh
-/Users/andrew/Library/pnpm/bin/pnpm
-```
+## Build Caveats
 
-If shell PATH does not include it, use:
-
-```sh
-PNPM_HOME=/Users/andrew/Library/pnpm PATH=/Users/andrew/Library/pnpm/bin:$PATH pnpm run build
-```
-
-## Build Caveat
-
-`pnpm-workspace.yaml` contains:
+`pnpm-workspace.yaml` intentionally overrides Rollup with wasm Rollup for the current Codex/macOS environment:
 
 ```yaml
 overrides:
@@ -67,14 +56,28 @@ onlyBuiltDependencies:
   - esbuild
 ```
 
-This is intentional for the Codex/macOS environment where signed Node may reject native Rollup `.node` binaries. Keep it unless normal Rollup builds are verified.
+Keep this unless normal Rollup builds are verified.
 
-The same signed Node issue can block the npm Tauri CLI wrapper. Prefer cargo-installed Tauri CLI in this environment:
+DMG packaging currently fails at `bundle_dmg.sh`. The `.app` bundle is still generated successfully before that failure:
 
-```sh
-cargo install tauri-cli --version 2.11.2 --locked
-cargo tauri build
+```text
+src-tauri/target/release/bundle/macos/CopyDeck.app
 ```
+
+Manrope is bundled from `Manrope/Manrope-VariableFont_wght.ttf` through `@font-face` in `src/styles.css`. Do not replace it with system-only font fallback; the bundled font is required so the Tauri WebView renders consistently.
+
+## Auto Update Notes
+
+CopyDeck uses Tauri v2 updater with GitHub Releases as the static update host.
+
+- Updater endpoint: `https://github.com/nesterov2u/copydeck/releases/latest/download/latest.json`
+- Public updater key is stored in `src-tauri/tauri.conf.json`.
+- Private updater key must never be committed. Put its contents in the GitHub secret `TAURI_SIGNING_PRIVATE_KEY`.
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` is optional only if the generated key has no password.
+- For local builds with an unencrypted key, set `TAURI_SIGNING_PRIVATE_KEY_PASSWORD=""` explicitly so the CLI does not try to prompt for a password.
+- `.github/workflows/release.yml` publishes draft macOS releases and lets `tauri-apps/tauri-action` upload `latest.json`.
+- Keep `bundle.createUpdaterArtifacts` enabled; without it the release can build but installed apps will not receive update bundles.
+- Version bumps must stay aligned across `package.json`, `src-tauri/tauri.conf.json`, and `src-tauri/Cargo.toml`.
 
 ## Implementation Rules
 
@@ -84,51 +87,90 @@ Prefer:
 
 - actions in `useCopyDeckStore.ts`
 - parsing in `services/parser.ts`
-- import logic in `services/importers.ts`
+- clipboard import logic in `services/clipboard.ts` and block parsing in `services/parser.ts`
 - native/browser API wrappers in `services/*`
 - design tokens in `styles.css`
 
 Do not let Figma/design refactors rewrite queue behavior.
 
-## UX Rules
+## Current UX Rules
 
 `Copy & Next` is the primary action:
 
 1. copy current original text
 2. mark block completed
-3. move to next pending block
+3. move to the immediate next block in the queue
 
 Per-block copy must not change current selection.
 
+Copied content must be plain text only. Keep `writeClipboard` clearing the clipboard before `writeText` so stale HTML/RTF clipboard flavors do not leak into design apps.
+
 Translation is context only. It must never replace original block text and must not affect what Copy/Copy & Next copies.
 
-Themes should use CSS variables. Future Figma work should mostly update tokens, spacing, component styling, and icons rather than store/service behavior.
+When Translation is disabled, hide translation UI completely in both list rows and Preview Mode. Do not leave disabled icons or placeholder panels visible.
+
+Search, visible filters, and visible row type badges are intentionally removed from the MVP.
+
+The app should drag from almost any held/moved UI area except the large `Copy & Next` button. Preserve the small drag threshold so normal clicks still work.
+
+Current styling decisions:
+
+- UI text should use bundled Manrope everywhere. Buttons, inputs, and selects inherit the root font.
+- Dark theme follows the Figma dark palette: app bg `#130040`, card `#1d0062`, primary `#3c60ff`, control `#d4dcff`.
+- Settings sidebar items: inactive gray text/icon, active blue text/icon, regular weight.
+- Settings General theme selector should be stacked: label above, `System / Light / Dark` segmented control full-width below.
+- Settings sidebar card should stretch down the settings area, but keep its bottom outer gap equal to the left gap (`8px`).
+- Toasts should be muted gray and low-contrast, not dark purple/black.
+- Copy row button square stays 40x40; internal copy icon is 24x24.
+- Preview keeps the bottom `Copy & Next` primary action, plus top Back and the in-card copy button.
+- The visible shortcut label on `Copy & Next` is removed.
+- Header settings button icon should stay gray.
+- Window width is fixed at 350px.
+- Scrollbar in the list should sit on the app's right edge.
+- On macOS startup/reopen, keep the Rust-side `center -> unminimize -> show -> focus` sequence. The frontend should only call `setVisibleOnAllWorkspaces(true)` when pinned is enabled; avoid calling it with `false` during startup.
+
+## Import Notes
+
+Supported MVP imports:
+
+- Clipboard only
+
+The import menu currently contains:
+
+- one add/import icon in the header
+- clicking it reads plain text from the clipboard and imports/splits that text
+- no Google Docs URL form
+- no file picker
+
+Import settings are intentionally compact:
+
+- split blocks labels: `Empty`, `Line`, `Custom`
+- custom separator default/placeholder: `//`
+
+The old `Copying` and `Hotkeys` settings sections were removed. `Storage` currently only has `Clear Cache`.
+
+Language detection is automatic for imported/pasted blocks. Current heuristics cover English, Russian, Indonesian, Spanish, French, German, Italian, Portuguese, Dutch, Polish, and Turkish.
 
 ## Performance Direction
 
 Keep the app light:
 
-- lazy-load heavy importers
 - do not add PDF until Phase 2
 - keep translation optional
 - avoid storing full original files when blocks and metadata are enough
 - consider list virtualization only when real documents with many hundreds/thousands of blocks show UI lag
 
-`mammoth` and `xlsx` are dynamically imported so DOCX/XLSX parsing does not inflate the initial application chunk.
+File import, Google Docs import, and global shortcut code paths are intentionally removed from the app and package metadata.
 
-## Build Status
+## Current Checks
 
-- `pnpm test` passes.
+- `pnpm test` passes: 3 test files, 15 tests.
 - `pnpm run build` passes.
-- `cargo tauri build` has produced a macOS `.app` and `.dmg`.
-- The generated bundles are ignored under `src-tauri/target`.
+- cargo Tauri build creates `.app`, then DMG packaging fails.
 
-## Known Gaps / Next Work
+## Next Work
 
 - Smoke-test the generated `.app` interactively on macOS.
-- Make XLSX import fully mode-aware: cell, row, selected column.
-- Improve translation UX so click can pin/show popover if desired; current version is a lightweight hover/click placeholder.
-- Add real settings screen for configurable hotkeys and theme.
-- Add proper empty/error states for imports.
-- Expand tests beyond the existing parser and queue navigation coverage.
-- Continue splitting components only when it reduces real complexity; `src/App.tsx` is now a composition layer.
+- Fix DMG packaging.
+- Improve translation UX: click/pinned popover, manual action, provider/error states.
+- Expand tests around store actions, import modes, and clipboard-only import behavior.

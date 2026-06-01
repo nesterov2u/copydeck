@@ -1,5 +1,3 @@
-import { ListChecks } from "lucide-react";
-
 export function ProgressSection({
   completed,
   total,
@@ -12,12 +10,11 @@ export function ProgressSection({
   return (
     <section className="progress-section">
       <div className="progress-meta">
-        <span>{completed} / {total} блоков</span>
+        <span>{completed} / {total} Blocks</span>
+        <div className="progress-track">
+          <div className="progress-value" style={{ width: `${progress}%` }} />
+        </div>
         <strong>{progress}%</strong>
-        <ListChecks size={18} />
-      </div>
-      <div className="progress-track">
-        <div className="progress-value" style={{ width: `${progress}%` }} />
       </div>
     </section>
   );

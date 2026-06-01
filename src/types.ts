@@ -1,20 +1,18 @@
 export type BlockType =
-  | "heading"
+  | "header"
+  | "subhead"
   | "paragraph"
-  | "quote"
   | "caption"
-  | "cta"
   | "list"
-  | "table"
-  | "unknown";
+  | "table";
 
 export type BlockStatus = "pending" | "completed" | "skipped";
 
 export type ParseMode = "paragraph" | "line" | "delimiter" | "custom";
 
-export type FilterMode = "all" | "pending" | "completed" | "skipped";
-
 export type ThemeMode = "light" | "dark" | "system";
+
+export type SpreadsheetImportMode = "cell" | "row" | "column";
 
 export type TextBlock = {
   id: string;
@@ -31,3 +29,12 @@ export type ToastState = {
   message: string;
   tone: "success" | "info" | "error";
 } | null;
+
+export type UpdateStatus = "idle" | "checking" | "available" | "updating";
+
+export type AppUpdateInfo = {
+  version: string;
+  currentVersion: string;
+  date?: string;
+  body?: string;
+};

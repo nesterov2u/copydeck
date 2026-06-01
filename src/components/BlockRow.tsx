@@ -1,37 +1,36 @@
-import { ArrowRight, Check, Circle, Clipboard, Globe2, Minus } from "lucide-react";
 import type { BlockStatus, TextBlock } from "../types";
 import { firstLine, secondLine } from "../utils/text";
-import { typeLabels } from "./blockLabels";
+import { Icon } from "./Icon";
 import { TranslationPopover } from "./TranslationPopover";
 
 export function BlockRow({
   block,
-  index,
   isCurrent,
-  onSelect,
+  translationEnabled,
   onOpen,
   onCopy,
   onToggle,
   onTranslate
 }: {
   block: TextBlock;
-  index: number;
   isCurrent: boolean;
-  onSelect: () => void;
+  translationEnabled: boolean;
   onOpen: () => void;
   onCopy: () => void;
   onToggle: () => void;
   onTranslate: () => void;
 }) {
   return (
-    <article className={`block-row ${isCurrent ? "current" : ""}`} onClick={onSelect}>
+    <article
+      className={`block-row ${isCurrent ? "current" : ""} ${translationEnabled ? "" : "without-translation"}`}
+      onClick={onOpen}
+    >
       <button className={`status-button ${block.status}`} onClick={(event) => {
         event.stopPropagation();
         onToggle();
       }}>
         {statusIcon(block.status, isCurrent)}
       </button>
-      <span className="block-number">{index + 1}</span>
       <button className="block-content" onClick={(event) => {
         event.stopPropagation();
         onOpen();
@@ -39,29 +38,30 @@ export function BlockRow({
         <strong>{firstLine(block.text)}</strong>
         <span>{secondLine(block.text)}</span>
       </button>
-      <span className={`type-tag ${block.type}`}>{typeLabels[block.type]}</span>
-      <button className="icon-button quiet" title="Скопировать" onClick={(event) => {
+      {translationEnabled && (
+        <div className="translation-trigger">
+          <button className="icon-button quiet" title="Перевод" onMouseEnter={onTranslate} onClick={(event) => {
+            event.stopPropagation();
+            onTranslate();
+          }}>
+            <Icon name="worldBolt" size={22} />
+          </button>
+          <TranslationPopover block={block} />
+        </div>
+      )}
+      <button className="copy-button-row" title="Скопировать" onClick={(event) => {
         event.stopPropagation();
         onCopy();
       }}>
-        <Clipboard size={18} />
+        <Icon name="copy" size={24} />
       </button>
-      <div className="translation-trigger">
-        <button className="icon-button quiet" title="Перевод" onMouseEnter={onTranslate} onClick={(event) => {
-          event.stopPropagation();
-          onTranslate();
-        }}>
-          <Globe2 size={20} />
-        </button>
-        <TranslationPopover block={block} />
-      </div>
     </article>
   );
 }
 
 function statusIcon(status: BlockStatus, isCurrent: boolean) {
-  if (isCurrent) return <ArrowRight size={16} />;
-  if (status === "completed") return <Check size={16} />;
-  if (status === "skipped") return <Minus size={16} />;
-  return <Circle size={15} />;
+  if (isCurrent) return <Icon name="circleArrowRight" size={24} />;
+  if (status === "completed") return <Icon name="squareRoundedCheck" size={24} />;
+  if (status === "skipped") return <span className="skip-mark" aria-hidden="true" />;
+  return <Icon name="squareRoundedCheckOutline" size={24} />;
 }

@@ -1,6 +1,6 @@
 # CopyDeck Context
 
-CopyDeck is a compact desktop utility for designers who need to move many text fragments from source documents into design/layout tools without losing progress.
+CopyDeck is a compact Tauri desktop utility for designers who need to move many text fragments from source documents into design/layout tools without losing progress.
 
 Primary workflow:
 
@@ -16,76 +16,103 @@ CopyDeck should feel like a small native macOS utility, not a full web app. It s
 
 The product is a text queue manager. It must not become an AI writing, summarization, OCR, cloud sync, team collaboration, Adobe plugin, or Figma plugin product.
 
-## MVP Scope
+## Current MVP Scope
 
-Version 0.1 should include:
+Included or currently implemented:
 
 - macOS-style compact UI
+- fixed 350 px window width, resizable height, minimum 500 px
 - List Mode
 - Preview Mode
 - Back to List
-- Clipboard import
-- TXT import
-- DOCX import
-- XLSX/CSV import
-- block parsing modes: paragraph, line, delimiter, custom separator
+- Clipboard import only
+- block parsing modes: empty line, new line, delimiter, custom separator
 - block statuses: pending, completed, skipped
 - Copy button on every block
 - Copy & Next main action
 - completion toggle
-- search
-- filters
 - progress tracking
 - Always On Top
-- hotkeys
-- local persistence
+- local persistence via Zustand/localStorage
 - light, dark, and system themes
 - translation icon and quick translation preview
+- bottom `Copy & Next` action in Preview Mode
+- manual update checking via Tauri updater and GitHub Releases
 
-## Translation
+Out of scope:
 
-Translation is only for context while placing text. The original text is never modified, and Copy & Next always copies the original block text.
+- AI writing
+- AI summarization
+- OCR
+- cloud sync
+- team collaboration
+- Adobe/Figma plugins
+- automatic paste into design software
 
-Translation should be optional. The app must work without translation support.
+## Current UX Decisions
 
-Preferred direction:
-
-1. Native Apple Translate API if practical
-2. local translation cache
-3. optional fallback providers later
+- Search is removed from MVP by user decision.
+- Visible filters are removed from the compact main UI.
+- Visible block type badges (`P`, `S`, `H`, etc.) are removed because they were not informative.
+- Block types still exist internally for parsing/future behavior, but they are not shown in rows or preview.
+- `Copy & Next` always copies the original block text, marks it completed, then moves forward.
+- `Copy & Next` moves to the immediate next block, not the next pending block, to avoid skipping already completed rows.
+- Per-block copy does not change current position.
+- Copied content must be plain text only, without formatting. The clipboard is cleared before `writeText` to avoid stale HTML/RTF clipboard flavors.
+- Translation is context only and never replaces original text.
+- The app window should be draggable by holding and moving almost any part of the UI except the large `Copy & Next` button. A small movement threshold avoids breaking normal clicks.
 
 ## Design Reference
 
-The first MVP UI is based on the provided reference image:
+The current MVP UI is based on the user's compact Figma/reference direction:
 
-- narrow desktop window, around 360-420 px wide
+- fixed 350 px desktop window width
+- resizable height, minimum 500 px
 - macOS traffic lights
-- centered title
-- progress area
-- filters and search
-- block list with status, number, preview, type tag, copy, translate
-- dominant purple Copy & Next button
-- Preview Mode with full text and translation panel
+- centered CopyDeck logo/title
+- progress row: completed / total, progress bar, percent
+- compact block list
+- block row: status/current indicator, preview text, translate, copy
+- dominant blue Copy & Next button
+- Preview Mode with Back, full original text, optional translation panel, compact copy button, and bottom `Copy & Next`
+- Settings screen with General, Import, Translation, Storage sections
 
-This reference is a working design hypothesis. The code should be structured so a future Figma design can replace visual details without rewriting business logic.
+Current Figma source for visual tokens is:
 
-Next design step: the user plans to finish a Figma UI mockup and provide it later. When that arrives, adapt the current component/CSS-token layer to match Figma while preserving queue/import/clipboard/translation behavior.
+`https://www.figma.com/design/uvBOywQjm7rZR9YAeAjlvT/1Ci-Drafts?node-id=52-7&t=a8Jreu986lYP3bjo-1`
 
-## Architecture Preference
+Useful frame nodes:
 
-Keep product logic separate from UI:
+- `52:56` Main-Light
+- `52:95` Main-Dark
+- `52:134` Inner-Light
+- `52:197` Inner-Dark
+- `52:260` Settings-Light
+- `52:339` Settings-Dark
 
-- queue/status/current-position logic in state/store
-- parsing/import services in separate modules
-- clipboard/native actions in service wrappers
-- theme values via CSS variables/tokens
-- UI components should consume store actions, not own business rules
+MCP-derived visual tokens currently applied in CSS:
 
-Avoid overbuilding. For MVP, localStorage is enough; SQLite is future work.
+- app frame: `350 x 696`, radius `26`
+- fonts: bundled `Manrope` for UI text, `Unbounded Medium` in the logo SVG
+- primary: `#3c60ff`
+- light background: `#f9f9f9`, light text: `#130040`, light control: `#6e6e6e`
+- dark background: `#130040`, dark card: `#1d0062`, dark control: `#d4dcff`, dark hover: `rgba(98,127,255,0.3)`
+- rows: 8px gap, 16px radius, active row uses primary hover tint
+
+## Block Types
+
+Current internal block types:
+
+- `header`
+- `subhead`
+- `caption`
+- `table`
+- `list`
+- `paragraph`
+
+Unknown imported content should fall back to `paragraph`.
 
 ## Current Implementation State
-
-The project was scaffolded from scratch in this directory.
 
 Current stack:
 
@@ -95,78 +122,103 @@ Current stack:
 - Vite
 - Zustand
 - CSS variables
-- mammoth for DOCX
-- xlsx for XLSX/CSV
-- lucide-react icons
+- local SVG/PNG assets in `icons/`
 - pnpm
 
 Important files:
 
-- `src/App.tsx` - composition layer for the app shell and modes
-- `src/components/` - UI components for header, filters, block rows, preview, toolbar, popover
-- `src/hooks/useCopyDeckEffects.ts` - theme, pinned window, hotkeys, toast timeout effects
+- `src/App.tsx` - composition layer for the app shell, modes, and app-wide drag behavior
+- `src/components/` - UI components for header, block rows, preview, toolbar, settings, popover
+- `src/components/Icon.tsx` - local icon registry
+- `src/hooks/useCopyDeckEffects.ts` - theme, pinned window, workspace visibility, toast timeout effects
 - `src/store/useCopyDeckStore.ts` - queue state, actions, persistence
 - `src/services/parser.ts` - text splitting and block type inference
 - `src/services/queue.ts` - pure queue navigation helpers
-- `src/services/importers.ts` - TXT/DOCX/XLSX/CSV readers
 - `src/services/clipboard.ts` - Tauri/browser clipboard wrapper
-- `src/services/translation.ts` - translation/detection placeholder
+- `src/services/translation.ts` - language detection plus translation fallback
+- `src/services/updater.ts` - Tauri updater wrapper for checking and installing app updates
 - `src/styles.css` - theme tokens and UI styling
-- `src-tauri/` - Tauri shell/config
+- `Manrope/Manrope-VariableFont_wght.ttf` - bundled UI font used by `@font-face`
+- `src-tauri/src/lib.rs` - Tauri setup and macOS reopen/focus handling
+- `src-tauri/tauri.conf.json` - Tauri shell/config
+- `src-tauri/icons/` - generated app icon set
+
+## Recent Features And Fixes
+
+- Compact Figma-derived light/dark UI is implemented.
+- Main list no longer has search, filters, or type badges.
+- Preview long text/URLs wrap inside their containers.
+- Preview Mode uses the top Back button, an in-card copy button, and the bottom `Copy & Next` primary action.
+- Add/import header icon imports plain text directly from clipboard. File import and Google Docs URL import are removed from the UI.
+- App can be dragged from almost any UI area except the main Copy & Next button.
+- Header window controls call native close/minimize/toggle maximize.
+- Pin/unpin toggles Always On Top and swaps icon.
+- Window uses transparent background, 26 px radius, and native macOS shadow.
+- Translation uses local cache/dictionary first and MyMemory fallback for public network translation.
+- When Translation is disabled in settings, translation UI is hidden entirely: no row translation icon/popover in compact list and no translation panel in Preview Mode.
+- Copying settings section was removed by user decision.
+- Storage settings currently only exposes `Clear Cache`, which clears cached translations/status fields related to translation.
+- Import settings labels are compact: split blocks uses `Empty`, `Line`, `Custom`; custom separator defaults to `//`.
+- Language detection is automatic for pasted/imported text and currently has heuristics for English, Russian, Indonesian, Spanish, French, German, Italian, Portuguese, Dutch, Polish, and Turkish.
+- Dock reopen/click centers, shows, unminimizes, and focuses the existing main window on macOS. On startup the window is also centered and shown. When pinned, the frontend sets the window visible on all workspaces; do not call `setVisibleOnAllWorkspaces(false)` on startup because that can strand the window on another Space.
+- The main list scrollbar is aligned to the right app edge.
+- Per-row translation icons no longer float above translation popovers.
+- Copy buttons keep the 40x40 square while the internal copy icon is 24x24, including preview.
+- Copy actions explicitly clear the clipboard before writing plain text via `@tauri-apps/plugin-clipboard-manager`.
+- Settings sidebar styling is normalized: inactive item text/icon are gray, active item text/icon are blue, text is not bold.
+- Settings theme selector is stacked vertically: `Theme` label on its own row and `System / Light / Dark` segmented control below it full-width so labels fit.
+- Settings sidebar card stretches down the settings area, with the bottom outer gap matching the left side gap (`8px`).
+- Dark theme was visually checked against `Main-Dark.png`; progress track, row colors, settings panel, icons, pill buttons, switches, and bottom fade are tuned for the Figma dark palette.
+- Toast messages are intentionally muted gray instead of high-contrast dark purple/black.
+- `Manrope` is bundled with the app via `@font-face`, so WebView no longer depends on the font being installed in macOS.
+- App icon is generated from `icons/image.png` into `src-tauri/icons`.
+- Keyboard/global shortcuts are removed, including the visible shortcut label on `Copy & Next`.
+- Tauri updater is configured for GitHub Releases at `https://github.com/nesterov2u/copydeck/releases/latest/download/latest.json`.
+- Manual update checking lives in Settings -> General. It does not auto-download updates or interrupt the main copy workflow.
+
+## Build And Verification
 
 Current verified checks:
 
-- `pnpm test` passes: 2 test files, 12 tests
+- `pnpm test` passes: 3 test files, 15 tests
 - `pnpm run build` passes
-- `cargo tauri build` passes
+- `PATH=/Users/andrew/.cargo/bin:$PATH /Users/andrew/.cargo/bin/cargo-tauri build` builds the macOS `.app`
 
-Native macOS build artifacts have been produced:
+Current app artifact:
 
 - `src-tauri/target/release/bundle/macos/CopyDeck.app`
-- `src-tauri/target/release/bundle/dmg/CopyDeck_0.1.0_aarch64.dmg`
 
-The repo is published and synced at:
+Known build issue:
 
-- `https://github.com/nesterov2u/copydeck`
-
-Latest pushed commit at the time of this note:
-
-- `72311d2 Enable native Tauri bundle build`
-
-## Recent Engineering Changes
-
-- UI was split from one large `App.tsx` into focused components.
-- `mammoth` and `xlsx` are dynamically imported so heavy importers do not inflate the initial app chunk.
-- Core parser and queue navigation tests were added with Vitest.
-- Tauri config now uses `pnpm` for `beforeDevCommand` and `beforeBuildCommand`.
-- A placeholder `src-tauri/icons/icon.png` was added because Tauri requires an icon for native builds.
-- `src-tauri/Cargo.lock` is committed for repeatable native builds.
-
-## Environment Note
-
-In the Codex app environment, Node is signed in a way that can block native Rollup loading on macOS. This project uses `@rollup/wasm-node` via `pnpm-workspace.yaml` to keep Vite builds working in that environment.
-
-In a normal local environment this workaround may be unnecessary, but do not remove it casually until builds are tested.
-
-The npm Tauri CLI wrapper can hit the same signed-Node/native-binding problem. In this environment, use cargo-installed Tauri CLI instead:
+- DMG packaging currently fails at `bundle_dmg.sh`.
+- The `.app` bundle is still generated successfully before the DMG failure.
+- `pnpm tauri build` can fail in this Codex/macOS environment because signed Node rejects Tauri native bindings. Prefer the cargo-installed CLI:
 
 ```sh
-cargo install tauri-cli --version 2.11.2 --locked
-cargo tauri build
+PATH=/Users/andrew/.cargo/bin:$PATH /Users/andrew/.cargo/bin/cargo-tauri build
 ```
 
-Rust/Cargo were installed and verified with:
+Build note:
 
-- `rustc 1.95.0`
-- `cargo 1.95.0`
+- File import, Google Docs import, and global shortcut code paths are removed from the app and package metadata.
+- Auto-update releases require `TAURI_SIGNING_PRIVATE_KEY` in GitHub Secrets. The public key is safe in `src-tauri/tauri.conf.json`; the private key must stay out of the repository.
 
-## Next Work
+## Repository
+
+GitHub repo:
+
+`https://github.com/nesterov2u/copydeck`
+
+The current worktree is intentionally dirty with ongoing MVP/UI changes. Do not revert user or prior-agent work.
+
+## Next Bugfix Areas
 
 Most likely next tasks:
 
-- apply the upcoming Figma UI to the current component/token layer
 - smoke-test the generated `.app` interactively on macOS
-- improve translation UX: click-to-open/pin popover, Preview "Translate now", clear unavailable/error states
-- make XLSX/CSV import mode-aware: cell, row, selected column
+- inspect whether macOS Dock/Finder icon cache shows the latest generated icon
+- fix DMG packaging failure
+- improve translation UX: click-to-open/pin popover, manual translate action, clearer provider/error states
+- improve settings details for Import, Translation, Storage
 - add empty/error import states
-- expand tests around store actions and import modes
+- expand tests around store actions, import modes, and clipboard-only import behavior

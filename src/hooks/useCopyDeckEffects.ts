@@ -5,7 +5,6 @@ import type { ThemeMode } from "../types";
 export function useCopyDeckEffects(theme: ThemeMode, pinned: boolean) {
   useTheme(theme);
   useTauriWindow(pinned);
-  useHotkeys();
   useToastTimeout();
 }
 
@@ -26,69 +25,21 @@ function useTheme(theme: ThemeMode) {
 function useTauriWindow(pinned: boolean) {
   useEffect(() => {
     import("@tauri-apps/api/window")
-      .then(({ getCurrentWindow }) => getCurrentWindow().setAlwaysOnTop(pinned))
-      .catch(() => undefined);
-  }, [pinned]);
-}
+      .then(async ({ getCurrentWindow }) => {
+        const win = getCurrentWindow();
+        const updates = [
+          win.setAlwaysOnTop(pinned),
+          win.setShadow(true)
+        ];
 
-function useHotkeys() {
-  const copyAndNext = useCopyDeckStore((state) => state.copyAndNext);
-  const copyCurrent = useCopyDeckStore((state) => state.copyCurrent);
-  const goNext = useCopyDeckStore((state) => state.goNext);
-  const goPrevious = useCopyDeckStore((state) => state.goPrevious);
+        if (pinned) {
+          updates.push(win.setVisibleOnAllWorkspaces(true));
+        }
 
-  useEffect(() => {
-    let unregisterGlobal: (() => void) | undefined;
-
-    import("@tauri-apps/plugin-global-shortcut")
-      .then(async ({ register, unregister }) => {
-        const shortcuts = [
-          ["CommandOrControl+Shift+C", copyAndNext],
-          ["CommandOrControl+Shift+V", copyCurrent],
-          ["CommandOrControl+Shift+Right", goNext],
-          ["CommandOrControl+Shift+Left", goPrevious]
-        ] as const;
-
-        await Promise.all(shortcuts.map(([shortcut, handler]) => register(shortcut, handler)));
-        unregisterGlobal = () => {
-          shortcuts.forEach(([shortcut]) => {
-            unregister(shortcut).catch(() => undefined);
-          });
-        };
+        await Promise.allSettled(updates);
       })
       .catch(() => undefined);
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      const mod = event.metaKey || event.ctrlKey;
-      if (!mod || !event.shiftKey) return;
-
-      if (event.key.toLowerCase() === "c") {
-        event.preventDefault();
-        copyAndNext();
-      }
-
-      if (event.key.toLowerCase() === "v") {
-        event.preventDefault();
-        copyCurrent();
-      }
-
-      if (event.key === "ArrowRight") {
-        event.preventDefault();
-        goNext();
-      }
-
-      if (event.key === "ArrowLeft") {
-        event.preventDefault();
-        goPrevious();
-      }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      unregisterGlobal?.();
-    };
-  }, [copyAndNext, copyCurrent, goNext, goPrevious]);
+  }, [pinned]);
 }
 
 function useToastTimeout() {

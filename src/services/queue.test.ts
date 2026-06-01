@@ -10,12 +10,12 @@ const blocks: TextBlock[] = [
 ];
 
 describe("queue navigation", () => {
-  it("moves to the next pending block after current", () => {
+  it("moves to the next block after current", () => {
     expect(getNextBlockId(blocks, "one")).toBe("two");
-    expect(getNextBlockId(blocks, "two")).toBe("four");
+    expect(getNextBlockId(blocks, "two")).toBe("three");
   });
 
-  it("falls back to the next block when there is no later pending block", () => {
+  it("wraps after the last block", () => {
     expect(getNextBlockId(blocks, "four")).toBe("one");
   });
 

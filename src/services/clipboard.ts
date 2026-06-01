@@ -1,10 +1,12 @@
 export async function writeClipboard(text: string) {
+  const plainText = String(text);
   try {
     const clipboard = await import("@tauri-apps/plugin-clipboard-manager");
-    await clipboard.writeText(text);
+    await clipboard.clear();
+    await clipboard.writeText(plainText);
     return;
   } catch {
-    await navigator.clipboard.writeText(text);
+    await navigator.clipboard.writeText(plainText);
   }
 }
 

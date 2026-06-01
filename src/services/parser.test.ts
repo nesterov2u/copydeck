@@ -45,11 +45,11 @@ describe("parseTextToBlocks", () => {
 
 describe("inferBlockType", () => {
   it("detects common block types", () => {
-    expect(inferBlockType("CTA: Buy now", 2)).toBe("cta");
     expect(inferBlockType("Caption: Product photo", 2)).toBe("caption");
     expect(inferBlockType("- First item", 2)).toBe("list");
     expect(inferBlockType("Name\tValue", 2)).toBe("table");
-    expect(inferBlockType("Short heading", 2)).toBe("heading");
+    expect(inferBlockType("Subhead: Product details", 2)).toBe("subhead");
+    expect(inferBlockType("Short heading", 2)).toBe("header");
     expect(inferBlockType("This is a complete paragraph with punctuation.", 2)).toBe("paragraph");
   });
 });

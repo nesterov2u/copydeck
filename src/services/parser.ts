@@ -35,13 +35,13 @@ export function inferBlockType(text: string, index: number): BlockType {
   const firstLine = text.split("\n")[0]?.trim() ?? "";
   const lower = firstLine.toLowerCase();
 
-  if (index === 0 && firstLine.length < 90) return "heading";
-  if (/^["“].+["”]$/.test(text.trim())) return "quote";
-  if (/^(cta|call to action|button):/i.test(lower)) return "cta";
+  if (text.includes("\t")) return "table";
+  if (/^(table|таблица):/i.test(lower)) return "table";
   if (/^(caption|fig\.|image):/i.test(lower)) return "caption";
   if (/^([-*•]|\d+\.)\s+/.test(firstLine)) return "list";
-  if (text.includes("\t")) return "table";
-  if (firstLine.length < 70 && !/[.!?]$/.test(firstLine)) return "heading";
+  if (/^(subhead|subtitle|подзаголовок):/i.test(lower)) return "subhead";
+  if (index === 0 && firstLine.length < 90) return "header";
+  if (firstLine.length < 70 && !/[.!?]$/.test(firstLine)) return "header";
 
   return "paragraph";
 }
