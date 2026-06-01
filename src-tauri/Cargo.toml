@@ -1,6 +1,6 @@
 [package]
 name = "copydeck"
-version = "0.1.0"
+version = "0.1.1"
 description = "A compact text queue utility for designers."
 authors = ["CopyDeck"]
 edition = "2021"
