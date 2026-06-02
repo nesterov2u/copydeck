@@ -12,7 +12,7 @@ export type ParseMode = "paragraph" | "line" | "delimiter" | "custom";
 
 export type ThemeMode = "light" | "dark" | "system";
 
-export type SpreadsheetImportMode = "cell" | "row" | "column";
+export type InterfaceLanguage = "en" | "ru";
 
 export type TextBlock = {
   id: string;

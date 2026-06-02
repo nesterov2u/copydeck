@@ -1,26 +1,26 @@
 import { useEffect, useState } from "react";
 import { useCopyDeckStore } from "../store/useCopyDeckStore";
-import type { ParseMode, SpreadsheetImportMode, ThemeMode } from "../types";
+import { languageLabel, t } from "../services/i18n";
+import type { InterfaceLanguage, ParseMode, ThemeMode } from "../types";
 import { Icon, type IconName } from "./Icon";
 
 type SettingsSection = "general" | "import" | "translation" | "storage" | "update";
 
-const sections: Array<{ id: SettingsSection; label: string; icon: IconName }> = [
-  { id: "general", label: "General", icon: "settings" },
-  { id: "import", label: "Import", icon: "fileArrowLeft" },
-  { id: "translation", label: "Translation", icon: "language" },
-  { id: "storage", label: "Storage", icon: "database" },
-  { id: "update", label: "Update", icon: "worldBolt" }
-];
-
 export function Settings() {
   const store = useCopyDeckStore();
   const [activeSection, setActiveSection] = useState<SettingsSection>("general");
+  const sections: Array<{ id: SettingsSection; label: string; icon: IconName }> = [
+    { id: "general", label: t(store.interfaceLanguage, "general"), icon: "settings" },
+    { id: "import", label: t(store.interfaceLanguage, "import"), icon: "fileArrowLeft" },
+    { id: "translation", label: t(store.interfaceLanguage, "translation"), icon: "language" },
+    { id: "storage", label: t(store.interfaceLanguage, "storage"), icon: "database" },
+    { id: "update", label: t(store.interfaceLanguage, "update"), icon: "worldBolt" }
+  ];
 
   return (
     <section className="settings-view">
       <button className="deck-button" onClick={store.backToList}>
-        <Icon name="list" size={20} /> Deck
+        <Icon name="list" size={20} /> {t(store.interfaceLanguage, "deck")}
       </button>
 
       <div className="settings-layout">
@@ -55,17 +55,34 @@ function GeneralSettings() {
   return (
     <>
       <div className="setting-row stack">
-        <span>Theme</span>
+        <span>{t(store.interfaceLanguage, "theme")}</span>
         <Segmented
           value={store.theme}
           values={["system", "light", "dark"] as ThemeMode[]}
-          labels={{ system: "System", light: "Light", dark: "Dark" }}
+          labels={{
+            system: t(store.interfaceLanguage, "system"),
+            light: t(store.interfaceLanguage, "light"),
+            dark: t(store.interfaceLanguage, "dark")
+          }}
           onChange={store.setTheme}
         />
       </div>
 
-      <SettingSwitch label="Always on top" checked={store.pinned} onChange={store.setPinned} />
-      <SettingSwitch label="Compact mode" checked={store.compactMode} onChange={store.setCompactMode} />
+      <div className="setting-row stack">
+        <span>{t(store.interfaceLanguage, "interfaceLanguage")}</span>
+        <Segmented
+          value={store.interfaceLanguage}
+          values={["en", "ru"] as InterfaceLanguage[]}
+          labels={{ en: "English", ru: "Русский" }}
+          onChange={store.setInterfaceLanguage}
+        />
+      </div>
+
+      <SettingSwitch
+        label={t(store.interfaceLanguage, "pinWindow")}
+        checked={store.pinned}
+        onChange={store.setPinned}
+      />
     </>
   );
 }
@@ -76,17 +93,21 @@ function ImportSettings() {
   return (
     <>
       <div className="setting-row stack">
-        <span>Split blocks</span>
+        <span>{t(store.interfaceLanguage, "splitBlocks")}</span>
         <Segmented
           value={store.parseMode}
           values={["paragraph", "line", "custom"] as ParseMode[]}
-          labels={{ paragraph: "Empty", line: "Line", custom: "Custom" }}
+          labels={{
+            paragraph: t(store.interfaceLanguage, "empty"),
+            line: t(store.interfaceLanguage, "line"),
+            custom: t(store.interfaceLanguage, "custom")
+          }}
           onChange={store.setParseMode}
         />
       </div>
 
       <label className="setting-row">
-        <span>Separator</span>
+        <span>{t(store.interfaceLanguage, "separator")}</span>
         <input
           className="setting-input"
           value={store.customSeparator}
@@ -94,29 +115,6 @@ function ImportSettings() {
           onChange={(event) => store.setCustomSeparator(event.target.value)}
         />
       </label>
-
-      <div className="setting-row stack">
-        <span>XLSX / CSV</span>
-        <Segmented
-          value={store.spreadsheetImportMode}
-          values={["cell", "row", "column"] as SpreadsheetImportMode[]}
-          labels={{ cell: "Cells", row: "Rows", column: "One column" }}
-          onChange={store.setSpreadsheetImportMode}
-        />
-      </div>
-
-      {store.spreadsheetImportMode === "column" && (
-        <label className="setting-row">
-          <span>Column #</span>
-          <input
-            className="setting-input small"
-            min={1}
-            type="number"
-            value={store.selectedColumnIndex + 1}
-            onChange={(event) => store.setSelectedColumnIndex(Number(event.target.value) - 1)}
-          />
-        </label>
-      )}
     </>
   );
 }
@@ -127,38 +125,38 @@ function TranslationSettings() {
   return (
     <>
       <SettingSwitch
-        label="Translation"
+        label={t(store.interfaceLanguage, "translation")}
         checked={store.translationEnabled}
         onChange={store.setTranslationEnabled}
       />
 
       <label className="setting-row">
-        <span>Target</span>
+        <span>{t(store.interfaceLanguage, "target")}</span>
         <select
           className="setting-input"
           value={store.targetLanguage}
           onChange={(event) => store.setTargetLanguage(event.target.value)}
         >
-          <option value="RU">Russian</option>
-          <option value="EN">English</option>
-          <option value="DE">German</option>
-          <option value="FR">French</option>
-          <option value="ES">Spanish</option>
-          <option value="IT">Italian</option>
+          <option value="RU">{languageLabel("RU", store.interfaceLanguage)}</option>
+          <option value="EN">{languageLabel("EN", store.interfaceLanguage)}</option>
+          <option value="DE">{languageLabel("DE", store.interfaceLanguage)}</option>
+          <option value="FR">{languageLabel("FR", store.interfaceLanguage)}</option>
+          <option value="ES">{languageLabel("ES", store.interfaceLanguage)}</option>
+          <option value="IT">{languageLabel("IT", store.interfaceLanguage)}</option>
         </select>
       </label>
 
-      <div className="setting-note">Translations are cached locally and never replace the original block text.</div>
+      <div className="setting-note">{t(store.interfaceLanguage, "translationCachedNote")}</div>
     </>
   );
 }
 
 function StorageSettings() {
-  const clearCache = useCopyDeckStore((state) => state.clearCache);
+  const store = useCopyDeckStore();
 
   return (
-    <button className="clear-cache-button" onClick={clearCache}>
-      Clear Cache
+    <button className="clear-cache-button" onClick={store.clearCache}>
+      {t(store.interfaceLanguage, "clearCache")}
     </button>
   );
 }
@@ -178,26 +176,36 @@ function UpdateSettings() {
 
   return (
     <div className="setting-row stack">
-      <span>App update</span>
-      <div className="setting-note">Current version {appVersion}</div>
+      <span>{t(store.interfaceLanguage, "update")}</span>
+      <div className="setting-note">
+        {t(store.interfaceLanguage, "currentVersion", { version: appVersion })}
+      </div>
       <div className="settings-action-stack">
         <button
           className="settings-action-button"
           disabled={checking || updating}
           onClick={store.checkForUpdates}
         >
-          {checking ? "Checking..." : "Check for update"}
+          {checking
+            ? t(store.interfaceLanguage, "checking")
+            : t(store.interfaceLanguage, "checkForUpdate")}
         </button>
 
         {store.availableUpdate && (
           <>
-            <div className="setting-note">Version {store.availableUpdate.version} is ready.</div>
+            <div className="setting-note">
+              {t(store.interfaceLanguage, "versionReady", {
+                version: store.availableUpdate.version
+              })}
+            </div>
             <button
               className="settings-action-button primary"
               disabled={updating}
               onClick={store.installUpdate}
             >
-              {updating ? "Installing..." : "Install & restart"}
+              {updating
+                ? t(store.interfaceLanguage, "installing")
+                : t(store.interfaceLanguage, "installAndRestart")}
             </button>
           </>
         )}

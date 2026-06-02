@@ -1,5 +1,4 @@
 import arrowBackUp from "../../icons/tabler_arrow-back-up.svg";
-import circleArrowRight from "../../icons/tabler_circle-arrow-right.svg";
 import copy from "../../icons/tabler_copy.svg";
 import database from "../../icons/tabler_database.svg";
 import fileArrowLeft from "../../icons/tabler_file-arrow-left.svg";
@@ -22,7 +21,6 @@ import worldBolt from "../../icons/tabler_world-bolt.svg";
 
 const icons = {
   arrowBackUp,
-  circleArrowRight,
   copy,
   database,
   fileArrowLeft,

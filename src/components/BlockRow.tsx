@@ -1,4 +1,6 @@
 import type { BlockStatus, TextBlock } from "../types";
+import type { InterfaceLanguage } from "../types";
+import { t } from "../services/i18n";
 import { firstLine, secondLine } from "../utils/text";
 import { Icon } from "./Icon";
 import { TranslationPopover } from "./TranslationPopover";
@@ -6,6 +8,7 @@ import { TranslationPopover } from "./TranslationPopover";
 export function BlockRow({
   block,
   isCurrent,
+  interfaceLanguage,
   translationEnabled,
   onOpen,
   onCopy,
@@ -14,6 +17,7 @@ export function BlockRow({
 }: {
   block: TextBlock;
   isCurrent: boolean;
+  interfaceLanguage: InterfaceLanguage;
   translationEnabled: boolean;
   onOpen: () => void;
   onCopy: () => void;
@@ -29,7 +33,7 @@ export function BlockRow({
         event.stopPropagation();
         onToggle();
       }}>
-        {statusIcon(block.status, isCurrent)}
+        {statusIcon(block.status)}
       </button>
       <button className="block-content" onClick={(event) => {
         event.stopPropagation();
@@ -40,16 +44,16 @@ export function BlockRow({
       </button>
       {translationEnabled && (
         <div className="translation-trigger">
-          <button className="icon-button quiet" title="Перевод" onMouseEnter={onTranslate} onClick={(event) => {
+          <button className="icon-button quiet" title={t(interfaceLanguage, "translation")} onMouseEnter={onTranslate} onClick={(event) => {
             event.stopPropagation();
             onTranslate();
           }}>
             <Icon name="worldBolt" size={22} />
           </button>
-          <TranslationPopover block={block} />
+          <TranslationPopover block={block} interfaceLanguage={interfaceLanguage} />
         </div>
       )}
-      <button className="copy-button-row" title="Скопировать" onClick={(event) => {
+      <button className="copy-button-row" title={t(interfaceLanguage, "copy")} onClick={(event) => {
         event.stopPropagation();
         onCopy();
       }}>
@@ -59,8 +63,7 @@ export function BlockRow({
   );
 }
 
-function statusIcon(status: BlockStatus, isCurrent: boolean) {
-  if (isCurrent) return <Icon name="circleArrowRight" size={24} />;
+function statusIcon(status: BlockStatus) {
   if (status === "completed") return <Icon name="squareRoundedCheck" size={24} />;
   if (status === "skipped") return <span className="skip-mark" aria-hidden="true" />;
   return <Icon name="squareRoundedCheckOutline" size={24} />;

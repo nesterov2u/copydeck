@@ -11,7 +11,6 @@ pub fn run() {
             app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
 
             if let Some(window) = app.get_webview_window("main") {
-                let _ = window.center();
                 let _ = window.unminimize();
                 let _ = window.show();
                 let _ = window.set_focus();
@@ -26,7 +25,6 @@ pub fn run() {
         #[cfg(target_os = "macos")]
         if let tauri::RunEvent::Reopen { .. } = event {
             if let Some(window) = app_handle.get_webview_window("main") {
-                let _ = window.center();
                 let _ = window.unminimize();
                 let _ = window.show();
                 let _ = window.set_focus();

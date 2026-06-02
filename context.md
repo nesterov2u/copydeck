@@ -21,7 +21,7 @@ The product is a text queue manager. It must not become an AI writing, summariza
 Included or currently implemented:
 
 - macOS-style compact UI
-- fixed 350 px window width, resizable height, minimum 500 px
+- fixed 400 px window width, resizable height, minimum 500 px
 - List Mode
 - Preview Mode
 - Back to List
@@ -58,6 +58,7 @@ Out of scope:
 - `Copy & Next` always copies the original block text, marks it completed, then moves forward.
 - `Copy & Next` moves to the immediate next block, not the next pending block, to avoid skipping already completed rows.
 - Per-block copy does not change current position.
+- Empty clipboard/import input does not replace the current queue; it shows a muted `Clipboard is empty` toast.
 - Copied content must be plain text only, without formatting. The clipboard is cleared before `writeText` to avoid stale HTML/RTF clipboard flavors.
 - Translation is context only and never replaces original text.
 - The app window should be draggable by holding and moving almost any part of the UI except the large `Copy & Next` button. A small movement threshold avoids breaking normal clicks.
@@ -66,16 +67,16 @@ Out of scope:
 
 The current MVP UI is based on the user's compact Figma/reference direction:
 
-- fixed 350 px desktop window width
+- fixed 400 px desktop window width
 - resizable height, minimum 500 px
 - macOS traffic lights
 - centered CopyDeck logo/title
 - progress row: completed / total, progress bar, percent
 - compact block list
-- block row: status/current indicator, preview text, translate, copy
+- block row: current row highlight, real status icon, preview text, translate, copy
 - dominant blue Copy & Next button
-- Preview Mode with Back, full original text, optional translation panel, compact copy button, and bottom `Copy & Next`
-- Settings screen with General, Import, Translation, Storage sections
+- Preview Mode with Back, 24x24 status icon, full original text, optional translation panel, compact copy button, and bottom `Copy & Next`
+- Settings screen with General, Import, Translation, Storage, Update sections
 
 Current Figma source for visual tokens is:
 
@@ -92,7 +93,7 @@ Useful frame nodes:
 
 MCP-derived visual tokens currently applied in CSS:
 
-- app frame: `350 x 696`, radius `26`
+- app frame: `400 x 696`, radius `26`
 - fonts: bundled `Manrope` for UI text, `Unbounded Medium` in the logo SVG
 - primary: `#3c60ff`
 - light background: `#f9f9f9`, light text: `#130040`, light control: `#6e6e6e`
@@ -148,7 +149,8 @@ Important files:
 - Compact Figma-derived light/dark UI is implemented.
 - Main list no longer has search, filters, or type badges.
 - Preview long text/URLs wrap inside their containers.
-- Preview Mode uses the top Back button, an in-card copy button, and the bottom `Copy & Next` primary action.
+- Preview Mode uses the top Back button, an in-card 24x24 status icon, an in-card copy button, and the bottom `Copy & Next` primary action.
+- The main list current row no longer swaps the status icon for an arrow; it always shows the actual copied/not-copied/skipped status.
 - Add/import header icon imports plain text directly from clipboard. File import and Google Docs URL import are removed from the UI.
 - App can be dragged from almost any UI area except the main Copy & Next button.
 - Header window controls call native close/minimize/toggle maximize.
@@ -159,8 +161,11 @@ Important files:
 - Copying settings section was removed by user decision.
 - Storage settings currently only exposes `Clear Cache`, which clears cached translations/status fields related to translation.
 - Import settings labels are compact: split blocks uses `Empty`, `Line`, `Custom`; custom separator defaults to `//`.
+- General settings no longer has `Compact mode`; the app is compact by default.
+- General settings includes an interface language segmented control for English and Russian UI text.
+- Import settings no longer has `XLSX / CSV`; MVP import is clipboard-only.
 - Language detection is automatic for pasted/imported text and currently has heuristics for English, Russian, Indonesian, Spanish, French, German, Italian, Portuguese, Dutch, Polish, and Turkish.
-- Dock reopen/click centers, shows, unminimizes, and focuses the existing main window on macOS. On startup the window is also centered and shown. When pinned, the frontend sets the window visible on all workspaces; do not call `setVisibleOnAllWorkspaces(false)` on startup because that can strand the window on another Space.
+- Dock reopen/click shows, unminimizes, and focuses the existing main window on macOS without recentering it. The frontend saves/restores the outer window position in localStorage so CopyDeck stays where the user left it. When pinned, the frontend sets the window visible on all workspaces; do not call `setVisibleOnAllWorkspaces(false)` on startup because that can strand the window on another Space.
 - The main list scrollbar is aligned to the right app edge.
 - Per-row translation icons no longer float above translation popovers.
 - Copy buttons keep the 40x40 square while the internal copy icon is 24x24, including preview.
@@ -172,26 +177,38 @@ Important files:
 - Toast messages are intentionally muted gray instead of high-contrast dark purple/black.
 - `Manrope` is bundled with the app via `@font-face`, so WebView no longer depends on the font being installed in macOS.
 - App icon is generated from `icons/image.png` into `src-tauri/icons`.
-- Keyboard/global shortcuts are removed, including the visible shortcut label on `Copy & Next`.
+- Global shortcut code paths and the visible shortcut label on `Copy & Next` are removed.
+- Local in-window keyboard controls are enabled outside Settings/text inputs: Arrow Down/Arrow Up move the current block, Arrow Right/Arrow Left toggle the current list block copied/not copied, Space runs `Copy & Next`, Enter opens the current line in Preview, and Backspace returns from Preview to the list.
 - Tauri updater is configured for GitHub Releases at `https://github.com/nesterov2u/copydeck/releases/latest/download/latest.json`.
-- Manual update checking lives in Settings -> General. It does not auto-download updates or interrupt the main copy workflow.
+- Manual update checking lives in Settings -> Update. It does not auto-download updates or interrupt the main copy workflow.
+- Latest published release is `v0.1.6`.
+- Current local app version is `0.1.7`, prepared for the next future release.
+- `v0.1.6` was published successfully with signed updater artifacts for both `darwin-aarch64` and `darwin-x86_64`.
+- Future GitHub releases are intentionally Apple Silicon only: `.github/workflows/release.yml` now builds only `aarch64-apple-darwin`. Restore `x86_64-apple-darwin` only if Intel Mac updates are needed again.
+- The GitHub release workflow uses `--bundles app`; updater releases rely on `.app.tar.gz`, `.app.tar.gz.sig`, and `latest.json`, not on the `.dmg` installer.
+- Release cadence: develop features and verify locally during the week; publish a GitHub release about once per week rather than for every small change.
 
 ## Build And Verification
 
 Current verified checks:
 
-- `pnpm test` passes: 3 test files, 15 tests
+- `pnpm test` passes: 4 test files, 18 tests
 - `pnpm run build` passes
-- `PATH=/Users/andrew/.cargo/bin:$PATH /Users/andrew/.cargo/bin/cargo-tauri build` builds the macOS `.app`
+- `PATH=/Users/andrew/.cargo/bin:$PATH /Users/andrew/.cargo/bin/cargo-tauri build` builds the macOS `.app`, `.dmg`, and updater artifacts when run outside the Codex sandbox
+- `CI=true TAURI_SIGNING_PRIVATE_KEY="$TAURI_SIGNING_PRIVATE_KEY" TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" PATH=/Users/andrew/.cargo/bin:$PATH /Users/andrew/.cargo/bin/cargo-tauri build --bundles app` builds the current local `0.1.7` `.app`, `.app.tar.gz`, and `.sig`.
+- `hdiutil verify src-tauri/target/release/bundle/dmg/CopyDeck_0.1.6_aarch64.dmg` reports a valid checksum for the generated DMG.
+- `v0.1.6` GitHub Actions release run succeeded and uploaded signed updater artifacts plus `latest.json`.
 
 Current app artifact:
 
 - `src-tauri/target/release/bundle/macos/CopyDeck.app`
+- Current local app bundle reports `CFBundleShortVersionString` and `CFBundleVersion` as `0.1.7`.
 
 Known build issue:
 
-- DMG packaging currently fails at `bundle_dmg.sh`.
-- The `.app` bundle is still generated successfully before the DMG failure.
+- `hdiutil create` fails inside the Codex sandbox with `Устройство не сконфигурировано`; this is a sandbox limitation, not a Tauri DMG packaging failure.
+- Run the full Tauri build with escalated permissions when you need to generate or verify a local `.dmg`.
+- This sandbox-only DMG issue does not affect GitHub updater releases.
 - `pnpm tauri build` can fail in this Codex/macOS environment because signed Node rejects Tauri native bindings. Prefer the cargo-installed CLI:
 
 ```sh
@@ -200,8 +217,10 @@ PATH=/Users/andrew/.cargo/bin:$PATH /Users/andrew/.cargo/bin/cargo-tauri build
 
 Build note:
 
-- File import, Google Docs import, and global shortcut code paths are removed from the app and package metadata.
+- File import, Google Docs import, and global shortcut code paths are removed from the app and package metadata. Keep local in-window shortcuts in `src/App.tsx`.
+- Compact mode and XLSX/CSV import settings are removed from UI and persisted state; store persistence version is currently `6`.
 - Auto-update releases require `TAURI_SIGNING_PRIVATE_KEY` in GitHub Secrets. The public key is safe in `src-tauri/tauri.conf.json`; the private key must stay out of the repository.
+- The updater key was rotated before `v0.1.5`; old `0.1.1` installs may discover newer updates but cannot install them because they embed the previous public key.
 
 ## Repository
 
@@ -215,10 +234,9 @@ The current worktree is intentionally dirty with ongoing MVP/UI changes. Do not 
 
 Most likely next tasks:
 
+- test updating a local/new-key `0.1.5` app to published `0.1.6`
 - smoke-test the generated `.app` interactively on macOS
 - inspect whether macOS Dock/Finder icon cache shows the latest generated icon
-- fix DMG packaging failure
 - improve translation UX: click-to-open/pin popover, manual translate action, clearer provider/error states
-- improve settings details for Import, Translation, Storage
-- add empty/error import states
-- expand tests around store actions, import modes, and clipboard-only import behavior
+- improve settings details for Translation and Storage
+- expand tests around store actions and clipboard-only import behavior

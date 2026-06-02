@@ -1,3 +1,6 @@
+import { t } from "../services/i18n";
+import { useCopyDeckStore } from "../store/useCopyDeckStore";
+
 export function ProgressSection({
   completed,
   total,
@@ -7,10 +10,14 @@ export function ProgressSection({
   total: number;
   progress: number;
 }) {
+  const interfaceLanguage = useCopyDeckStore((state) => state.interfaceLanguage);
+
   return (
     <section className="progress-section">
       <div className="progress-meta">
-        <span>{completed} / {total} Blocks</span>
+        <span>
+          {completed} / {total} {t(interfaceLanguage, "blocks")}
+        </span>
         <div className="progress-track">
           <div className="progress-value" style={{ width: `${progress}%` }} />
         </div>

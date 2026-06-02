@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "CopyDeck",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "identifier": "app.copydeck.desktop",
   "build": {
     "beforeDevCommand": "pnpm run dev",
@@ -14,10 +14,10 @@
     "windows": [
       {
         "title": "CopyDeck",
-        "width": 350,
+        "width": 400,
         "height": 696,
-        "minWidth": 350,
-        "maxWidth": 350,
+        "minWidth": 400,
+        "maxWidth": 400,
         "minHeight": 500,
         "center": true,
         "visible": true,

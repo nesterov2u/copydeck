@@ -58,10 +58,10 @@ onlyBuiltDependencies:
 
 Keep this unless normal Rollup builds are verified.
 
-DMG packaging currently fails at `bundle_dmg.sh`. The `.app` bundle is still generated successfully before that failure:
+DMG packaging works, but `hdiutil create` fails inside the Codex sandbox with `Устройство не сконфигурировано`. Run the full Tauri build with escalated permissions when you need to generate or verify a `.dmg` locally:
 
-```text
-src-tauri/target/release/bundle/macos/CopyDeck.app
+```sh
+CI=true TAURI_SIGNING_PRIVATE_KEY="$TAURI_SIGNING_PRIVATE_KEY" TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" PATH=/Users/andrew/.cargo/bin:$PATH /Users/andrew/.cargo/bin/cargo-tauri build
 ```
 
 Manrope is bundled from `Manrope/Manrope-VariableFont_wght.ttf` through `@font-face` in `src/styles.css`. Do not replace it with system-only font fallback; the bundled font is required so the Tauri WebView renders consistently.
@@ -73,10 +73,17 @@ CopyDeck uses Tauri v2 updater with GitHub Releases as the static update host.
 - Updater endpoint: `https://github.com/nesterov2u/copydeck/releases/latest/download/latest.json`
 - Public updater key is stored in `src-tauri/tauri.conf.json`.
 - Private updater key must never be committed. Put its contents in the GitHub secret `TAURI_SIGNING_PRIVATE_KEY`.
-- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` is optional only if the generated key has no password.
-- For local builds with an unencrypted key, set `TAURI_SIGNING_PRIVATE_KEY_PASSWORD=""` explicitly so the CLI does not try to prompt for a password.
-- `.github/workflows/release.yml` publishes draft macOS releases and lets `tauri-apps/tauri-action` upload `latest.json`.
+- Current updater key is password-protected; keep `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` wired to the GitHub secret and do not change it to an empty string.
+- Local signing key files used during testing must never be committed.
+- `.github/workflows/release.yml` publishes macOS releases and lets `tauri-apps/tauri-action` upload `latest.json`.
+- The release workflow currently uses `--bundles app`; GitHub updater releases do not depend on DMG packaging.
+- Future releases are intentionally arm64-only: the workflow matrix should contain `aarch64-apple-darwin` only unless the user explicitly asks to support Intel again.
+- `v0.1.6` was published successfully with both `darwin-aarch64` and `darwin-x86_64` updater artifacts; it can be treated as the last dual-target release.
+- Current local app version is `0.1.7`, prepared for the next future release.
+- Old `0.1.1` installs embed the previous public updater key and may discover newer versions but fail signature verification. Test updates from a local/new-key `0.1.5` build or newer.
+- Release cadence: do feature work and local verification continuously, but publish GitHub releases roughly weekly. Do not bump versions, tag, or release for every small feature unless the user asks.
 - Keep `bundle.createUpdaterArtifacts` enabled; without it the release can build but installed apps will not receive update bundles.
+- Updater delivery depends on `.app.tar.gz`, `.app.tar.gz.sig`, and GitHub Release `latest.json`; the `.dmg` artifact is separate installer packaging.
 - Version bumps must stay aligned across `package.json`, `src-tauri/tauri.conf.json`, and `src-tauri/Cargo.toml`.
 
 ## Implementation Rules
@@ -123,11 +130,14 @@ Current styling decisions:
 - Toasts should be muted gray and low-contrast, not dark purple/black.
 - Copy row button square stays 40x40; internal copy icon is 24x24.
 - Preview keeps the bottom `Copy & Next` primary action, plus top Back and the in-card copy button.
+- Preview also shows the current block status as a 24x24 icon in the card header.
+- Main list rows always show the real status icon; do not replace the current row status with an arrow icon.
 - The visible shortcut label on `Copy & Next` is removed.
+- Local in-window keyboard controls are enabled outside Settings/text inputs: Arrow Down/Arrow Up move the current block, Arrow Right/Arrow Left toggle the current list block copied/not copied, Space runs `Copy & Next`, Enter opens the current line in Preview, and Backspace returns from Preview to the list.
 - Header settings button icon should stay gray.
-- Window width is fixed at 350px.
+- Window width is fixed at 400px.
 - Scrollbar in the list should sit on the app's right edge.
-- On macOS startup/reopen, keep the Rust-side `center -> unminimize -> show -> focus` sequence. The frontend should only call `setVisibleOnAllWorkspaces(true)` when pinned is enabled; avoid calling it with `false` during startup.
+- On macOS startup/reopen, keep the Rust-side `unminimize -> show -> focus` sequence and do not recenter the window. The frontend saves/restores the outer window position in localStorage. It should only call `setVisibleOnAllWorkspaces(true)` when pinned is enabled; avoid calling it with `false` during startup because that can strand the window on another Space.
 
 ## Import Notes
 
@@ -149,6 +159,10 @@ Import settings are intentionally compact:
 
 The old `Copying` and `Hotkeys` settings sections were removed. `Storage` currently only has `Clear Cache`.
 
+`Compact mode` and `XLSX / CSV` settings were removed. Empty clipboard/import input must not wipe the current queue; show `Clipboard is empty` instead.
+
+General settings includes an interface language segmented control for English and Russian UI text. The persisted store version is currently `6` because `interfaceLanguage` is saved locally.
+
 Language detection is automatic for imported/pasted blocks. Current heuristics cover English, Russian, Indonesian, Spanish, French, German, Italian, Portuguese, Dutch, Polish, and Turkish.
 
 ## Performance Direction
@@ -160,17 +174,20 @@ Keep the app light:
 - avoid storing full original files when blocks and metadata are enough
 - consider list virtualization only when real documents with many hundreds/thousands of blocks show UI lag
 
-File import, Google Docs import, and global shortcut code paths are intentionally removed from the app and package metadata.
+File import, Google Docs import, and global shortcut code paths are intentionally removed from the app and package metadata. Keep local in-window shortcuts in `src/App.tsx`.
 
 ## Current Checks
 
-- `pnpm test` passes: 3 test files, 15 tests.
+- `pnpm test` passes: 4 test files, 18 tests.
 - `pnpm run build` passes.
-- cargo Tauri build creates `.app`, then DMG packaging fails.
+- `CI=true TAURI_SIGNING_PRIVATE_KEY="$TAURI_SIGNING_PRIVATE_KEY" TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" PATH=/Users/andrew/.cargo/bin:$PATH /Users/andrew/.cargo/bin/cargo-tauri build --bundles app` creates the signed `.app.tar.gz` updater artifact and `.sig`.
+- Current local `CopyDeck.app` is version `0.1.7`.
+- Full cargo Tauri build creates `.app`, `.dmg`, `.app.tar.gz`, and `.sig` when run outside the Codex sandbox.
+- GitHub release `v0.1.6` completed successfully via Actions run `26773183969`.
 
 ## Next Work
 
+- Test updating from the local/new-key `0.1.5` app to published `0.1.6`.
 - Smoke-test the generated `.app` interactively on macOS.
-- Fix DMG packaging.
 - Improve translation UX: click/pinned popover, manual action, provider/error states.
-- Expand tests around store actions, import modes, and clipboard-only import behavior.
+- Expand tests around store actions and clipboard-only import behavior.

@@ -2,14 +2,15 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type {
   BlockType,
+  InterfaceLanguage,
   ParseMode,
-  SpreadsheetImportMode,
   TextBlock,
   ThemeMode,
   ToastState,
   AppUpdateInfo,
   UpdateStatus
 } from "../types";
+import { t } from "../services/i18n";
 import { parseTextToBlocks } from "../services/parser";
 import { readClipboard, writeClipboard } from "../services/clipboard";
 import { getNextBlockId, getPreviousBlockId } from "../services/queue";
@@ -24,14 +25,12 @@ type CopyDeckState = {
   currentId: string | null;
   parseMode: ParseMode;
   customSeparator: string;
-  spreadsheetImportMode: SpreadsheetImportMode;
-  selectedColumnIndex: number;
   translationEnabled: boolean;
   targetLanguage: string;
+  interfaceLanguage: InterfaceLanguage;
   theme: ThemeMode;
   view: "list" | "preview" | "settings";
   pinned: boolean;
-  compactMode: boolean;
   toast: ToastState;
   updateStatus: UpdateStatus;
   availableUpdate: AppUpdateInfo | null;
@@ -46,15 +45,14 @@ type CopyDeckState = {
   backToList: () => void;
   setParseMode: (mode: ParseMode) => void;
   setCustomSeparator: (separator: string) => void;
-  setSpreadsheetImportMode: (mode: SpreadsheetImportMode) => void;
-  setSelectedColumnIndex: (index: number) => void;
   setTranslationEnabled: (enabled: boolean) => void;
   setTargetLanguage: (language: string) => void;
+  setInterfaceLanguage: (language: InterfaceLanguage) => void;
   setTheme: (theme: ThemeMode) => void;
   setPinned: (pinned: boolean) => void;
-  setCompactMode: (compactMode: boolean) => void;
   toggleCompleted: (id: string) => void;
   markSkipped: (id: string) => void;
+  toggleCurrentCopied: () => void;
   goNext: () => void;
   goPrevious: () => void;
   separateCurrent: () => void;
@@ -71,13 +69,11 @@ type PersistedCopyDeckState = Pick<
   | "currentId"
   | "parseMode"
   | "customSeparator"
-  | "spreadsheetImportMode"
-  | "selectedColumnIndex"
   | "translationEnabled"
   | "targetLanguage"
+  | "interfaceLanguage"
   | "theme"
   | "pinned"
-  | "compactMode"
 >;
 
 export const useCopyDeckStore = create<CopyDeckState>()(
@@ -87,14 +83,12 @@ export const useCopyDeckStore = create<CopyDeckState>()(
       currentId: "sample-1",
       parseMode: "paragraph",
       customSeparator: "//",
-      spreadsheetImportMode: "cell",
-      selectedColumnIndex: 0,
       translationEnabled: true,
       targetLanguage: "RU",
+      interfaceLanguage: "en",
       theme: "system",
       view: "list",
       pinned: false,
-      compactMode: true,
       toast: null,
       updateStatus: "idle",
       availableUpdate: null,
@@ -105,11 +99,19 @@ export const useCopyDeckStore = create<CopyDeckState>()(
             detectedLanguage: detectLanguage(block.text)
           })
         );
+        if (!blocks.length) {
+          set({ toast: { message: t(get().interfaceLanguage, "clipboardEmpty"), tone: "info" } });
+          return;
+        }
+
         set({
           blocks,
           currentId: blocks[0]?.id ?? null,
           view: "list",
-          toast: { message: `Imported ${blocks.length} blocks`, tone: "success" }
+          toast: {
+            message: t(get().interfaceLanguage, "importedBlocks", { count: blocks.length }),
+            tone: "success"
+          }
         });
       },
       importFromClipboard: async () => {
@@ -117,7 +119,7 @@ export const useCopyDeckStore = create<CopyDeckState>()(
           const text = await readClipboard();
           get().importText(text);
         } catch {
-          set({ toast: { message: "Import failed", tone: "error" } });
+          set({ toast: { message: t(get().interfaceLanguage, "importFailed"), tone: "error" } });
         }
       },
       copyBlock: async (id, advance = false) => {
@@ -128,7 +130,7 @@ export const useCopyDeckStore = create<CopyDeckState>()(
           blocks: state.blocks.map((item) =>
             item.id === id ? { ...item, status: "completed" } : item
           ),
-          toast: { message: "Copied", tone: "success" }
+          toast: { message: t(state.interfaceLanguage, "copied"), tone: "success" }
         }));
         if (advance) {
           get().goNext();
@@ -148,14 +150,11 @@ export const useCopyDeckStore = create<CopyDeckState>()(
       backToList: () => set({ view: "list" }),
       setParseMode: (parseMode) => set({ parseMode }),
       setCustomSeparator: (customSeparator) => set({ customSeparator }),
-      setSpreadsheetImportMode: (spreadsheetImportMode) => set({ spreadsheetImportMode }),
-      setSelectedColumnIndex: (selectedColumnIndex) =>
-        set({ selectedColumnIndex: Math.max(0, Math.floor(selectedColumnIndex || 0)) }),
       setTranslationEnabled: (translationEnabled) => set({ translationEnabled }),
       setTargetLanguage: (targetLanguage) => set({ targetLanguage: targetLanguage.toUpperCase() }),
+      setInterfaceLanguage: (interfaceLanguage) => set({ interfaceLanguage }),
       setTheme: (theme) => set({ theme }),
       setPinned: (pinned) => set({ pinned }),
-      setCompactMode: (compactMode) => set({ compactMode }),
       toggleCompleted: (id) =>
         set((state) => ({
           blocks: state.blocks.map((block) =>
@@ -168,6 +167,14 @@ export const useCopyDeckStore = create<CopyDeckState>()(
         set((state) => ({
           blocks: state.blocks.map((block) =>
             block.id === id ? { ...block, status: "skipped" } : block
+          )
+        })),
+      toggleCurrentCopied: () =>
+        set((state) => ({
+          blocks: state.blocks.map((block) =>
+            block.id === state.currentId
+              ? { ...block, status: block.status === "completed" ? "pending" : "completed" }
+              : block
           )
         })),
       goNext: () => {
@@ -186,7 +193,12 @@ export const useCopyDeckStore = create<CopyDeckState>()(
 
         const separated = parseTextToBlocks(currentBlock.text, parseMode, customSeparator);
         if (separated.length <= 1) {
-          set({ toast: { message: "Block cannot be separated", tone: "info" } });
+          set({
+            toast: {
+              message: t(get().interfaceLanguage, "blockCannotBeSeparated"),
+              tone: "info"
+            }
+          });
           return;
         }
 
@@ -199,7 +211,10 @@ export const useCopyDeckStore = create<CopyDeckState>()(
         set({
           blocks: nextBlocks,
           currentId: separated[0]?.id ?? currentId,
-          toast: { message: `Separated into ${separated.length} blocks`, tone: "success" }
+          toast: {
+            message: t(get().interfaceLanguage, "separatedBlocks", { count: separated.length }),
+            tone: "success"
+          }
         });
       },
       translateBlock: async (id) => {
@@ -222,40 +237,53 @@ export const useCopyDeckStore = create<CopyDeckState>()(
           });
         } catch {
           setBlock(id, { translationStatus: "error" });
-          set({ toast: { message: "Translation unavailable", tone: "error" } });
+          set({
+            toast: { message: t(get().interfaceLanguage, "translationUnavailable"), tone: "error" }
+          });
         }
       },
       checkForUpdates: async () => {
         if (get().updateStatus === "checking" || get().updateStatus === "updating") return;
 
-        set({ updateStatus: "checking", toast: { message: "Checking updates", tone: "info" } });
+        set({
+          updateStatus: "checking",
+          toast: { message: t(get().interfaceLanguage, "checkingUpdates"), tone: "info" }
+        });
         try {
           const update = await checkForAppUpdate();
           set({
             updateStatus: update ? "available" : "idle",
             availableUpdate: update,
             toast: update
-              ? { message: `Update ${update.version} available`, tone: "info" }
-              : { message: "CopyDeck is up to date", tone: "success" }
+              ? {
+                  message: t(get().interfaceLanguage, "updateAvailable", {
+                    version: update.version
+                  }),
+                  tone: "info"
+                }
+              : { message: t(get().interfaceLanguage, "copyDeckUpToDate"), tone: "success" }
           });
         } catch {
           set({
             updateStatus: "idle",
             availableUpdate: null,
-            toast: { message: "No update available yet", tone: "info" }
+            toast: { message: t(get().interfaceLanguage, "noUpdateAvailableYet"), tone: "info" }
           });
         }
       },
       installUpdate: async () => {
         if (get().updateStatus === "updating") return;
 
-        set({ updateStatus: "updating", toast: { message: "Installing update", tone: "info" } });
+        set({
+          updateStatus: "updating",
+          toast: { message: t(get().interfaceLanguage, "installingUpdate"), tone: "info" }
+        });
         try {
           await installPendingAppUpdate();
         } catch {
           set({
             updateStatus: get().availableUpdate ? "available" : "idle",
-            toast: { message: "Update install failed", tone: "error" }
+            toast: { message: t(get().interfaceLanguage, "updateInstallFailed"), tone: "error" }
           });
         }
       },
@@ -267,13 +295,13 @@ export const useCopyDeckStore = create<CopyDeckState>()(
             targetLanguage: undefined,
             translationStatus: "idle"
           })),
-          toast: { message: "Cache cleared", tone: "success" }
+          toast: { message: t(state.interfaceLanguage, "cacheCleared"), tone: "success" }
         })),
       clearToast: () => set({ toast: null })
     }),
     {
       name: "copydeck-state",
-      version: 3,
+      version: 6,
       migrate: (persisted) => {
         const state = persisted as Partial<PersistedCopyDeckState>;
         return {
@@ -284,13 +312,11 @@ export const useCopyDeckStore = create<CopyDeckState>()(
           currentId: state.currentId ?? null,
           parseMode: state.parseMode ?? "paragraph",
           customSeparator: state.customSeparator || "//",
-          spreadsheetImportMode: state.spreadsheetImportMode ?? "cell",
-          selectedColumnIndex: state.selectedColumnIndex ?? 0,
           translationEnabled: state.translationEnabled ?? true,
           targetLanguage: state.targetLanguage ?? "RU",
+          interfaceLanguage: state.interfaceLanguage ?? "en",
           theme: state.theme ?? "system",
-          pinned: state.pinned ?? false,
-          compactMode: state.compactMode ?? true
+          pinned: state.pinned ?? false
         };
       },
       partialize: (state) => ({
@@ -298,13 +324,11 @@ export const useCopyDeckStore = create<CopyDeckState>()(
         currentId: state.currentId,
         parseMode: state.parseMode,
         customSeparator: state.customSeparator,
-        spreadsheetImportMode: state.spreadsheetImportMode,
-        selectedColumnIndex: state.selectedColumnIndex,
         translationEnabled: state.translationEnabled,
         targetLanguage: state.targetLanguage,
+        interfaceLanguage: state.interfaceLanguage,
         theme: state.theme,
-        pinned: state.pinned,
-        compactMode: state.compactMode
+        pinned: state.pinned
       })
     }
   )

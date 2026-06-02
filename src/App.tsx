@@ -1,4 +1,4 @@
-import { useRef, type PointerEvent } from "react";
+import { useEffect, useRef, type PointerEvent } from "react";
 import { BlockRow } from "./components/BlockRow";
 import { BottomToolbar } from "./components/BottomToolbar";
 import { Header } from "./components/Header";
@@ -19,6 +19,58 @@ export function App() {
   const currentBlock = store.blocks.find((block) => block.id === store.currentId) ?? store.blocks[0];
 
   useCopyDeckEffects(store.theme, store.pinned);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (store.view === "settings" || isEditableShortcutTarget(event.target)) return;
+
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        store.goNext();
+      }
+
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        store.goPrevious();
+      }
+
+      if (event.key === "ArrowRight" && store.view === "list") {
+        event.preventDefault();
+        store.toggleCurrentCopied();
+      }
+
+      if (event.key === "ArrowLeft" && store.view === "list") {
+        event.preventDefault();
+        store.toggleCurrentCopied();
+      }
+
+      if ((event.key === " " || event.key === "Spacebar") && !event.repeat) {
+        event.preventDefault();
+        void store.copyAndNext();
+      }
+
+      if (event.key === "Enter" && store.view === "list" && store.currentId) {
+        event.preventDefault();
+        store.openPreview(store.currentId);
+      }
+
+      if (event.key === "Backspace" && store.view === "preview") {
+        event.preventDefault();
+        store.backToList();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [store]);
+
+  useEffect(() => {
+    if (store.view !== "list") return;
+    document.querySelector(".block-row.current")?.scrollIntoView({
+      block: "nearest",
+      inline: "nearest"
+    });
+  }, [store.currentId, store.view]);
 
   const onPointerDown = (event: PointerEvent<HTMLElement>) => {
     if (event.button !== 0) return;
@@ -54,7 +106,7 @@ export function App() {
 
   return (
     <main
-      className={`app-frame view-${store.view} ${store.compactMode ? "compact" : ""}`}
+      className={`app-frame view-${store.view}`}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={resetDrag}
@@ -73,6 +125,7 @@ export function App() {
                 key={block.id}
                 block={block}
                 isCurrent={block.id === store.currentId}
+                interfaceLanguage={store.interfaceLanguage}
                 translationEnabled={store.translationEnabled}
                 onOpen={() => store.openPreview(block.id)}
                 onCopy={() => store.copyBlock(block.id)}
@@ -95,4 +148,9 @@ export function App() {
       {store.toast && <div className={`toast ${store.toast.tone}`}>{store.toast.message}</div>}
     </main>
   );
+}
+
+function isEditableShortcutTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) return false;
+  return Boolean(target.closest("input, textarea, select, [contenteditable='true']"));
 }

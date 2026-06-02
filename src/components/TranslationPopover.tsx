@@ -1,37 +1,30 @@
-import type { TextBlock } from "../types";
+import { languageLabel, t } from "../services/i18n";
+import type { InterfaceLanguage, TextBlock } from "../types";
 
-export function TranslationPopover({ block }: { block: TextBlock }) {
+export function TranslationPopover({
+  block,
+  interfaceLanguage
+}: {
+  block: TextBlock;
+  interfaceLanguage: InterfaceLanguage;
+}) {
   return (
     <aside className="translation-popover">
-      <p className="popover-label">Original ({block.detectedLanguage ?? "AUTO"})</p>
+      <p className="popover-label">
+        {t(interfaceLanguage, "original")} ({block.detectedLanguage ?? "AUTO"})
+      </p>
       <p>{block.text}</p>
       <hr />
-      <p className="popover-label">{languageLabel(block.targetLanguage ?? "RU")}</p>
+      <p className="popover-label">
+        {languageLabel(block.targetLanguage ?? "RU", interfaceLanguage)}
+      </p>
       <p>
         {block.translationStatus === "loading"
-          ? "Перевод..."
+          ? t(interfaceLanguage, "translationLoading")
           : block.translationStatus === "error"
-            ? "Перевод временно недоступен"
-            : block.translation ?? "Наведи ещё раз для перевода"}
+            ? t(interfaceLanguage, "translationUnavailable")
+            : block.translation ?? t(interfaceLanguage, "translationHoverAgain")}
       </p>
     </aside>
   );
-}
-
-function languageLabel(language: string) {
-  const labels: Record<string, string> = {
-    DE: "German (DE)",
-    EN: "English (EN)",
-    ES: "Spanish (ES)",
-    FR: "French (FR)",
-    ID: "Indonesian (ID)",
-    IT: "Italian (IT)",
-    NL: "Dutch (NL)",
-    PL: "Polish (PL)",
-    PT: "Portuguese (PT)",
-    RU: "Russian (RU)",
-    TR: "Turkish (TR)"
-  };
-
-  return labels[language.toUpperCase()] ?? language.toUpperCase();
 }
