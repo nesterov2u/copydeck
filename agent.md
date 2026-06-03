@@ -78,8 +78,9 @@ CopyDeck uses Tauri v2 updater with GitHub Releases as the static update host.
 - `.github/workflows/release.yml` publishes macOS releases and lets `tauri-apps/tauri-action` upload `latest.json`.
 - The release workflow currently uses `--bundles app`; GitHub updater releases do not depend on DMG packaging.
 - Future releases are intentionally arm64-only: the workflow matrix should contain `aarch64-apple-darwin` only unless the user explicitly asks to support Intel again.
-- `v0.1.6` was published successfully with both `darwin-aarch64` and `darwin-x86_64` updater artifacts; it can be treated as the last dual-target release.
-- Current local app version is `0.1.7`, prepared for the next future release.
+- `v0.1.6` was published successfully with both `darwin-aarch64` and `darwin-x86_64` updater artifacts; it is the last dual-target release.
+- `v0.1.7` was published successfully through GitHub Actions run `26806110141` with Apple Silicon updater artifacts only.
+- Current local app version is `0.1.8`, newer than the latest published release and not yet published.
 - Old `0.1.1` installs embed the previous public updater key and may discover newer versions but fail signature verification. Test updates from a local/new-key `0.1.5` build or newer.
 - Release cadence: do feature work and local verification continuously, but publish GitHub releases roughly weekly. Do not bump versions, tag, or release for every small feature unless the user asks.
 - Keep `bundle.createUpdaterArtifacts` enabled; without it the release can build but installed apps will not receive update bundles.
@@ -126,6 +127,10 @@ Current styling decisions:
 - Dark theme follows the Figma dark palette: app bg `#130040`, card `#1d0062`, primary `#3c60ff`, control `#d4dcff`.
 - Settings sidebar items: inactive gray text/icon, active blue text/icon, regular weight.
 - Settings General theme selector should be stacked: label above, `System / Light / Dark` segmented control full-width below.
+- Settings General includes an interface language segmented control for English/Russian UI text.
+- Russian UI should use `Список` for the Back-to-list pill, not `Дека`.
+- Settings Translation target select uses a custom CSS arrow with adjusted right spacing.
+- Translation body text in Preview and row popovers should stay Manrope Regular (`font-weight: 400`); labels like `Translation` / `Перевод` can remain accented.
 - Settings sidebar card should stretch down the settings area, but keep its bottom outer gap equal to the left gap (`8px`).
 - Toasts should be muted gray and low-contrast, not dark purple/black.
 - Copy row button square stays 40x40; internal copy icon is 24x24.
@@ -137,6 +142,8 @@ Current styling decisions:
 - Header settings button icon should stay gray.
 - Window width is fixed at 400px.
 - Scrollbar in the list should sit on the app's right edge.
+- Empty Deck list view should show `icons/tabler_circle-dashed-plus.svg` as a muted background icon.
+- When the Deck is empty, the bottom `Copy & Next` button should be disabled and visually pale.
 - On macOS startup/reopen, keep the Rust-side `unminimize -> show -> focus` sequence and do not recenter the window. The frontend saves/restores the outer window position in localStorage. It should only call `setVisibleOnAllWorkspaces(true)` when pinned is enabled; avoid calling it with `false` during startup because that can strand the window on another Space.
 
 ## Import Notes
@@ -157,11 +164,13 @@ Import settings are intentionally compact:
 - split blocks labels: `Empty`, `Line`, `Custom`
 - custom separator default/placeholder: `//`
 
-The old `Copying` and `Hotkeys` settings sections were removed. `Storage` currently only has `Clear Cache`.
+The old `Copying` and `Hotkeys` settings sections were removed. `Storage` currently has `Clear Cache`, `Clear Deck`, and recent clipboard lists. In Russian UI, recent lists are labeled `Недавние списки`.
 
 `Compact mode` and `XLSX / CSV` settings were removed. Empty clipboard/import input must not wipe the current queue; show `Clipboard is empty` instead.
 
-General settings includes an interface language segmented control for English and Russian UI text. The persisted store version is currently `6` because `interfaceLanguage` is saved locally.
+If clipboard import has non-empty parsed blocks and the current deck already has progress (`completed` or `skipped`), do not replace immediately. Store a pending import and show the compact replacement confirmation. Confirming applies the new import and records it in recent lists; cancelling keeps the current deck.
+
+General settings includes an interface language segmented control for English and Russian UI text. The persisted store version is currently `7` because `interfaceLanguage` and `recentImports` are saved locally.
 
 Language detection is automatic for imported/pasted blocks. Current heuristics cover English, Russian, Indonesian, Spanish, French, German, Italian, Portuguese, Dutch, Polish, and Turkish.
 
@@ -178,16 +187,18 @@ File import, Google Docs import, and global shortcut code paths are intentionall
 
 ## Current Checks
 
-- `pnpm test` passes: 4 test files, 18 tests.
+- `pnpm test` passes: 4 test files, 25 tests.
 - `pnpm run build` passes.
 - `CI=true TAURI_SIGNING_PRIVATE_KEY="$TAURI_SIGNING_PRIVATE_KEY" TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" PATH=/Users/andrew/.cargo/bin:$PATH /Users/andrew/.cargo/bin/cargo-tauri build --bundles app` creates the signed `.app.tar.gz` updater artifact and `.sig`.
-- Current local `CopyDeck.app` is version `0.1.7`.
+- `CI=true PATH=/Users/andrew/.cargo/bin:$PATH /Users/andrew/.cargo/bin/cargo-tauri build --bundles app --config '{"bundle":{"createUpdaterArtifacts":false}}'` builds the local `.app` without updater signing artifacts when the private key is unavailable.
+- Current local `CopyDeck.app` is version `0.1.8`.
 - Full cargo Tauri build creates `.app`, `.dmg`, `.app.tar.gz`, and `.sig` when run outside the Codex sandbox.
-- GitHub release `v0.1.6` completed successfully via Actions run `26773183969`.
+- GitHub release `v0.1.7` completed successfully via Actions run `26806110141`.
 
 ## Next Work
 
-- Test updating from the local/new-key `0.1.5` app to published `0.1.6`.
+- Test updating from a local/new-key app older than published `v0.1.7` to published `v0.1.7`.
 - Smoke-test the generated `.app` interactively on macOS.
 - Improve translation UX: click/pinned popover, manual action, provider/error states.
-- Expand tests around store actions and clipboard-only import behavior.
+- Smoke-test `0.1.8` Storage recent lists / Clear Deck / empty Deck state in the native `.app`.
+- Prepare a future `v0.1.8` release when enough changes are ready.

@@ -4,6 +4,7 @@ import type {
   BlockType,
   InterfaceLanguage,
   ParseMode,
+  RecentImport,
   TextBlock,
   ThemeMode,
   ToastState,
@@ -34,8 +35,13 @@ type CopyDeckState = {
   toast: ToastState;
   updateStatus: UpdateStatus;
   availableUpdate: AppUpdateInfo | null;
+  pendingImport: RecentImport | null;
+  recentImports: RecentImport[];
   importText: (text: string) => void;
   importFromClipboard: () => Promise<void>;
+  confirmPendingImport: () => void;
+  cancelPendingImport: () => void;
+  restoreRecentImport: (id: string) => void;
   copyBlock: (id: string, advance?: boolean) => Promise<void>;
   copyCurrent: () => Promise<void>;
   copyAndNext: () => Promise<void>;
@@ -60,6 +66,7 @@ type CopyDeckState = {
   checkForUpdates: () => Promise<void>;
   installUpdate: () => Promise<void>;
   clearCache: () => void;
+  clearDeck: () => void;
   clearToast: () => void;
 };
 
@@ -74,6 +81,7 @@ type PersistedCopyDeckState = Pick<
   | "interfaceLanguage"
   | "theme"
   | "pinned"
+  | "recentImports"
 >;
 
 export const useCopyDeckStore = create<CopyDeckState>()(
@@ -92,27 +100,28 @@ export const useCopyDeckStore = create<CopyDeckState>()(
       toast: null,
       updateStatus: "idle",
       availableUpdate: null,
+      pendingImport: null,
+      recentImports: [],
       importText: (text) => {
-        const blocks = parseTextToBlocks(text, get().parseMode, get().customSeparator).map(
-          (block) => ({
-            ...block,
-            detectedLanguage: detectLanguage(block.text)
-          })
-        );
+        const blocks = prepareImportedBlocks(text, get().parseMode, get().customSeparator);
         if (!blocks.length) {
           set({ toast: { message: t(get().interfaceLanguage, "clipboardEmpty"), tone: "info" } });
           return;
         }
 
-        set({
-          blocks,
-          currentId: blocks[0]?.id ?? null,
-          view: "list",
-          toast: {
-            message: t(get().interfaceLanguage, "importedBlocks", { count: blocks.length }),
-            tone: "success"
-          }
-        });
+        const importRecord = createRecentImport(blocks);
+        if (hasDeckProgress(get().blocks)) {
+          set({
+            pendingImport: importRecord,
+            toast: {
+              message: t(get().interfaceLanguage, "replaceDeckConfirmToast"),
+              tone: "info"
+            }
+          });
+          return;
+        }
+
+        applyImport(set, get, importRecord);
       },
       importFromClipboard: async () => {
         try {
@@ -121,6 +130,32 @@ export const useCopyDeckStore = create<CopyDeckState>()(
         } catch {
           set({ toast: { message: t(get().interfaceLanguage, "importFailed"), tone: "error" } });
         }
+      },
+      confirmPendingImport: () => {
+        const pendingImport = get().pendingImport;
+        if (!pendingImport) return;
+        applyImport(set, get, pendingImport);
+      },
+      cancelPendingImport: () =>
+        set((state) => ({
+          pendingImport: null,
+          toast: { message: t(state.interfaceLanguage, "currentDeckKept"), tone: "info" }
+        })),
+      restoreRecentImport: (id) => {
+        const recentImport = get().recentImports.find((item) => item.id === id);
+        if (!recentImport) return;
+        set((state) => ({
+          blocks: cloneBlocks(recentImport.blocks),
+          currentId: recentImport.blocks[0]?.id ?? null,
+          view: "list",
+          pendingImport: null,
+          toast: {
+            message: t(state.interfaceLanguage, "deckRestored", {
+              count: recentImport.blockCount
+            }),
+            tone: "success"
+          }
+        }));
       },
       copyBlock: async (id, advance = false) => {
         const block = get().blocks.find((item) => item.id === id);
@@ -297,11 +332,19 @@ export const useCopyDeckStore = create<CopyDeckState>()(
           })),
           toast: { message: t(state.interfaceLanguage, "cacheCleared"), tone: "success" }
         })),
+      clearDeck: () =>
+        set((state) => ({
+          blocks: [],
+          currentId: null,
+          view: "list",
+          pendingImport: null,
+          toast: { message: t(state.interfaceLanguage, "deckCleared"), tone: "success" }
+        })),
       clearToast: () => set({ toast: null })
     }),
     {
       name: "copydeck-state",
-      version: 6,
+      version: 7,
       migrate: (persisted) => {
         const state = persisted as Partial<PersistedCopyDeckState>;
         return {
@@ -316,7 +359,8 @@ export const useCopyDeckStore = create<CopyDeckState>()(
           targetLanguage: state.targetLanguage ?? "RU",
           interfaceLanguage: state.interfaceLanguage ?? "en",
           theme: state.theme ?? "system",
-          pinned: state.pinned ?? false
+          pinned: state.pinned ?? false,
+          recentImports: normalizeRecentImports(state.recentImports)
         };
       },
       partialize: (state) => ({
@@ -328,11 +372,79 @@ export const useCopyDeckStore = create<CopyDeckState>()(
         targetLanguage: state.targetLanguage,
         interfaceLanguage: state.interfaceLanguage,
         theme: state.theme,
-        pinned: state.pinned
+        pinned: state.pinned,
+        recentImports: state.recentImports
       })
     }
   )
 );
+
+function prepareImportedBlocks(text: string, parseMode: ParseMode, customSeparator: string) {
+  return parseTextToBlocks(text, parseMode, customSeparator).map((block) => ({
+    ...block,
+    detectedLanguage: detectLanguage(block.text)
+  }));
+}
+
+function applyImport(
+  set: (
+    partial:
+      | Partial<CopyDeckState>
+      | ((state: CopyDeckState) => Partial<CopyDeckState>)
+  ) => void,
+  get: () => CopyDeckState,
+  importRecord: RecentImport
+) {
+  set((state) => ({
+    blocks: cloneBlocks(importRecord.blocks),
+    currentId: importRecord.blocks[0]?.id ?? null,
+    view: "list",
+    pendingImport: null,
+    recentImports: addRecentImport(state.recentImports, importRecord),
+    toast: {
+      message: t(get().interfaceLanguage, "importedBlocks", {
+        count: importRecord.blockCount
+      }),
+      tone: "success"
+    }
+  }));
+}
+
+function hasDeckProgress(blocks: TextBlock[]) {
+  return blocks.some((block) => block.status === "completed" || block.status === "skipped");
+}
+
+function createRecentImport(blocks: TextBlock[]): RecentImport {
+  return {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    createdAt: Date.now(),
+    blockCount: blocks.length,
+    preview: blocks[0]?.text.replace(/\s+/g, " ").trim().slice(0, 80) || "",
+    blocks: cloneBlocks(blocks)
+  };
+}
+
+function addRecentImport(recentImports: RecentImport[], importRecord: RecentImport) {
+  return [importRecord, ...recentImports.filter((item) => item.id !== importRecord.id)].slice(0, 5);
+}
+
+function cloneBlocks(blocks: TextBlock[]) {
+  return blocks.map((block) => ({ ...block }));
+}
+
+function normalizeRecentImports(recentImports?: RecentImport[]) {
+  if (!Array.isArray(recentImports)) return [];
+  return recentImports
+    .filter((item) => item && Array.isArray(item.blocks) && item.blocks.length)
+    .map((item) => ({
+      ...item,
+      blocks: item.blocks.map((block) => ({
+        ...block,
+        type: normalizeBlockType(block.type)
+      }))
+    }))
+    .slice(0, 5);
+}
 
 function normalizeBlockType(type: string): BlockType {
   if (

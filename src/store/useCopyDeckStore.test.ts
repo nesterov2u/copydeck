@@ -29,7 +29,9 @@ describe("useCopyDeckStore imports", () => {
       parseMode: "paragraph",
       customSeparator: "//",
       view: "preview",
-      toast: null
+      toast: null,
+      pendingImport: null,
+      recentImports: []
     });
   });
 
@@ -52,6 +54,80 @@ describe("useCopyDeckStore imports", () => {
     expect(state.currentId).toBe(state.blocks[0]?.id);
     expect(state.view).toBe("list");
     expect(state.toast).toEqual({ message: "Imported 2 blocks", tone: "success" });
+  });
+
+  it("asks before replacing a deck that already has progress", () => {
+    useCopyDeckStore.setState({
+      blocks: [
+        {
+          id: "existing",
+          text: "Existing block",
+          type: "paragraph",
+          status: "completed",
+          translationStatus: "idle"
+        }
+      ],
+      currentId: "existing",
+      view: "preview",
+      toast: null,
+      pendingImport: null,
+      recentImports: []
+    });
+
+    useCopyDeckStore.getState().importText("Fresh first\n\nFresh second");
+
+    const state = useCopyDeckStore.getState();
+    expect(state.blocks.map((block) => block.text)).toEqual(["Existing block"]);
+    expect(state.currentId).toBe("existing");
+    expect(state.view).toBe("preview");
+    expect(state.pendingImport?.blocks.map((block) => block.text)).toEqual([
+      "Fresh first",
+      "Fresh second"
+    ]);
+    expect(state.toast).toEqual({ message: "Confirm deck replacement", tone: "info" });
+  });
+
+  it("can cancel or confirm a pending deck replacement", () => {
+    useCopyDeckStore.setState({
+      blocks: [
+        {
+          id: "existing",
+          text: "Existing block",
+          type: "paragraph",
+          status: "completed",
+          translationStatus: "idle"
+        }
+      ],
+      currentId: "existing",
+      view: "preview",
+      toast: null,
+      pendingImport: null,
+      recentImports: []
+    });
+
+    useCopyDeckStore.getState().importText("Replacement");
+    useCopyDeckStore.getState().cancelPendingImport();
+
+    expect(useCopyDeckStore.getState().blocks.map((block) => block.text)).toEqual([
+      "Existing block"
+    ]);
+    expect(useCopyDeckStore.getState().pendingImport).toBeNull();
+    expect(useCopyDeckStore.getState().toast).toEqual({
+      message: "Current deck kept",
+      tone: "info"
+    });
+
+    useCopyDeckStore.getState().importText("Replacement");
+    useCopyDeckStore.getState().confirmPendingImport();
+
+    const state = useCopyDeckStore.getState();
+    expect(state.blocks.map((block) => block.text)).toEqual(["Replacement"]);
+    expect(state.currentId).toBe(state.blocks[0]?.id);
+    expect(state.view).toBe("list");
+    expect(state.pendingImport).toBeNull();
+    expect(state.recentImports).toHaveLength(1);
+    expect(state.recentImports[0]?.preview).toBe("Replacement");
+    expect(state.toast).toEqual({ message: "Imported 1 blocks", tone: "success" });
   });
 
   it("imports plain text from the clipboard", async () => {
@@ -96,6 +172,27 @@ describe("useCopyDeckStore imports", () => {
     expect(state.currentId).toBe("existing");
     expect(state.view).toBe("preview");
     expect(state.toast).toEqual({ message: "Import failed", tone: "error" });
+  });
+
+  it("restores a recent import and clears the deck", () => {
+    useCopyDeckStore.getState().importText("First recent\n\nSecond recent");
+    const recentId = useCopyDeckStore.getState().recentImports[0]?.id;
+    expect(recentId).toBeTruthy();
+
+    useCopyDeckStore.getState().importText("Current only");
+    useCopyDeckStore.getState().restoreRecentImport(recentId!);
+
+    let state = useCopyDeckStore.getState();
+    expect(state.blocks.map((block) => block.text)).toEqual(["First recent", "Second recent"]);
+    expect(state.toast).toEqual({ message: "Restored 2 blocks", tone: "success" });
+
+    useCopyDeckStore.getState().clearDeck();
+
+    state = useCopyDeckStore.getState();
+    expect(state.blocks).toEqual([]);
+    expect(state.currentId).toBeNull();
+    expect(state.view).toBe("list");
+    expect(state.toast).toEqual({ message: "Deck cleared", tone: "success" });
   });
 });
 

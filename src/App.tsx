@@ -6,8 +6,10 @@ import { Preview } from "./components/Preview";
 import { ProgressSection } from "./components/ProgressSection";
 import { Settings } from "./components/Settings";
 import { useCopyDeckEffects } from "./hooks/useCopyDeckEffects";
+import { t } from "./services/i18n";
 import { useCopyDeckStore } from "./store/useCopyDeckStore";
 import { blockPosition } from "./utils/text";
+import emptyDeckIcon from "../icons/tabler_circle-dashed-plus.svg?url";
 
 export function App() {
   const store = useCopyDeckStore();
@@ -120,19 +122,25 @@ export function App() {
         <>
           <ProgressSection completed={completed} total={total} progress={progress} />
           <section className="block-list">
-            {store.blocks.map((block) => (
-              <BlockRow
-                key={block.id}
-                block={block}
-                isCurrent={block.id === store.currentId}
-                interfaceLanguage={store.interfaceLanguage}
-                translationEnabled={store.translationEnabled}
-                onOpen={() => store.openPreview(block.id)}
-                onCopy={() => store.copyBlock(block.id)}
-                onToggle={() => store.toggleCompleted(block.id)}
-                onTranslate={() => store.translateBlock(block.id)}
-              />
-            ))}
+            {store.blocks.length ? (
+              store.blocks.map((block) => (
+                <BlockRow
+                  key={block.id}
+                  block={block}
+                  isCurrent={block.id === store.currentId}
+                  interfaceLanguage={store.interfaceLanguage}
+                  translationEnabled={store.translationEnabled}
+                  onOpen={() => store.openPreview(block.id)}
+                  onCopy={() => store.copyBlock(block.id)}
+                  onToggle={() => store.toggleCompleted(block.id)}
+                  onTranslate={() => store.translateBlock(block.id)}
+                />
+              ))
+            ) : (
+              <div className="empty-deck" aria-hidden="true">
+                <img src={emptyDeckIcon} alt="" />
+              </div>
+            )}
           </section>
         </>
       ) : (
@@ -145,6 +153,26 @@ export function App() {
       )}
 
       {store.view !== "settings" && <BottomToolbar />}
+      {store.pendingImport && (
+        <div className="confirm-overlay" role="dialog" aria-modal="true">
+          <div className="confirm-card">
+            <strong>{t(store.interfaceLanguage, "replaceDeckConfirmTitle")}</strong>
+            <p>
+              {t(store.interfaceLanguage, "replaceDeckConfirmBody", {
+                count: store.pendingImport.blockCount
+              })}
+            </p>
+            <div className="confirm-actions">
+              <button className="confirm-secondary" onClick={store.cancelPendingImport}>
+                {t(store.interfaceLanguage, "back")}
+              </button>
+              <button className="confirm-primary" onClick={store.confirmPendingImport}>
+                {t(store.interfaceLanguage, "replaceDeck")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {store.toast && <div className={`toast ${store.toast.tone}`}>{store.toast.message}</div>}
     </main>
   );

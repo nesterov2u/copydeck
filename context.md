@@ -38,6 +38,11 @@ Included or currently implemented:
 - translation icon and quick translation preview
 - bottom `Copy & Next` action in Preview Mode
 - manual update checking via Tauri updater and GitHub Releases
+- English/Russian interface language setting
+- guarded clipboard import replacement when the current deck already has progress
+- local recent clipboard lists in Storage
+- Clear Deck action in Storage
+- empty Deck visual state
 
 Out of scope:
 
@@ -59,8 +64,10 @@ Out of scope:
 - `Copy & Next` moves to the immediate next block, not the next pending block, to avoid skipping already completed rows.
 - Per-block copy does not change current position.
 - Empty clipboard/import input does not replace the current queue; it shows a muted `Clipboard is empty` toast.
+- Importing non-empty clipboard text over a deck with progress asks for confirmation before replacing the deck.
 - Copied content must be plain text only, without formatting. The clipboard is cleared before `writeText` to avoid stale HTML/RTF clipboard flavors.
 - Translation is context only and never replaces original text.
+- Translation body text should use regular weight; the translation section label can remain accented.
 - The app window should be draggable by holding and moving almost any part of the UI except the large `Copy & Next` button. A small movement threshold avoids breaking normal clicks.
 
 ## Design Reference
@@ -138,6 +145,7 @@ Important files:
 - `src/services/clipboard.ts` - Tauri/browser clipboard wrapper
 - `src/services/translation.ts` - language detection plus translation fallback
 - `src/services/updater.ts` - Tauri updater wrapper for checking and installing app updates
+- `src/services/i18n.ts` - lightweight English/Russian UI string dictionary
 - `src/styles.css` - theme tokens and UI styling
 - `Manrope/Manrope-VariableFont_wght.ttf` - bundled UI font used by `@font-face`
 - `src-tauri/src/lib.rs` - Tauri setup and macOS reopen/focus handling
@@ -159,16 +167,21 @@ Important files:
 - Translation uses local cache/dictionary first and MyMemory fallback for public network translation.
 - When Translation is disabled in settings, translation UI is hidden entirely: no row translation icon/popover in compact list and no translation panel in Preview Mode.
 - Copying settings section was removed by user decision.
-- Storage settings currently only exposes `Clear Cache`, which clears cached translations/status fields related to translation.
+- Storage settings exposes `Clear Cache`, `Clear Deck`, and local recent clipboard lists. In Russian UI, recent lists are labeled `Недавние списки`.
+- Recent clipboard lists persist locally, keep up to five imports, and can restore a previous imported deck.
+- Empty Deck list view shows `icons/tabler_circle-dashed-plus.svg` as a muted background icon, and the bottom `Copy & Next` button is disabled and pale.
+- Importing non-empty clipboard text over a deck that already has completed or skipped blocks opens a compact confirmation dialog before replacing the deck.
 - Import settings labels are compact: split blocks uses `Empty`, `Line`, `Custom`; custom separator defaults to `//`.
 - General settings no longer has `Compact mode`; the app is compact by default.
 - General settings includes an interface language segmented control for English and Russian UI text.
+- Russian UI uses `Список` for the Back-to-list pill, not `Дека`.
 - Import settings no longer has `XLSX / CSV`; MVP import is clipboard-only.
 - Language detection is automatic for pasted/imported text and currently has heuristics for English, Russian, Indonesian, Spanish, French, German, Italian, Portuguese, Dutch, Polish, and Turkish.
 - Dock reopen/click shows, unminimizes, and focuses the existing main window on macOS without recentering it. The frontend saves/restores the outer window position in localStorage so CopyDeck stays where the user left it. When pinned, the frontend sets the window visible on all workspaces; do not call `setVisibleOnAllWorkspaces(false)` on startup because that can strand the window on another Space.
 - The main list scrollbar is aligned to the right app edge.
 - Per-row translation icons no longer float above translation popovers.
 - Copy buttons keep the 40x40 square while the internal copy icon is 24x24, including preview.
+- Settings Translation target select uses a custom CSS arrow with adjusted right spacing.
 - Copy actions explicitly clear the clipboard before writing plain text via `@tauri-apps/plugin-clipboard-manager`.
 - Settings sidebar styling is normalized: inactive item text/icon are gray, active item text/icon are blue, text is not bold.
 - Settings theme selector is stacked vertically: `Theme` label on its own row and `System / Light / Dark` segmented control below it full-width so labels fit.
@@ -181,10 +194,11 @@ Important files:
 - Local in-window keyboard controls are enabled outside Settings/text inputs: Arrow Down/Arrow Up move the current block, Arrow Right/Arrow Left toggle the current list block copied/not copied, Space runs `Copy & Next`, Enter opens the current line in Preview, and Backspace returns from Preview to the list.
 - Tauri updater is configured for GitHub Releases at `https://github.com/nesterov2u/copydeck/releases/latest/download/latest.json`.
 - Manual update checking lives in Settings -> Update. It does not auto-download updates or interrupt the main copy workflow.
-- Latest published release is `v0.1.6`.
-- Current local app version is `0.1.7`, prepared for the next future release.
-- `v0.1.6` was published successfully with signed updater artifacts for both `darwin-aarch64` and `darwin-x86_64`.
-- Future GitHub releases are intentionally Apple Silicon only: `.github/workflows/release.yml` now builds only `aarch64-apple-darwin`. Restore `x86_64-apple-darwin` only if Intel Mac updates are needed again.
+- Latest published release is `v0.1.7`.
+- Current local app version is `0.1.8`, newer than the latest published release and not yet published.
+- `v0.1.6` was published successfully with signed updater artifacts for both `darwin-aarch64` and `darwin-x86_64`; it is the last dual-target release.
+- `v0.1.7` was published successfully with signed updater artifacts for Apple Silicon only: `darwin-aarch64` / `darwin-aarch64-app`.
+- Future GitHub releases are intentionally Apple Silicon only: `.github/workflows/release.yml` builds only `aarch64-apple-darwin`. Restore `x86_64-apple-darwin` only if Intel Mac updates are needed again.
 - The GitHub release workflow uses `--bundles app`; updater releases rely on `.app.tar.gz`, `.app.tar.gz.sig`, and `latest.json`, not on the `.dmg` installer.
 - Release cadence: develop features and verify locally during the week; publish a GitHub release about once per week rather than for every small change.
 
@@ -192,17 +206,18 @@ Important files:
 
 Current verified checks:
 
-- `pnpm test` passes: 4 test files, 18 tests
+- `pnpm test` passes: 4 test files, 25 tests
 - `pnpm run build` passes
 - `PATH=/Users/andrew/.cargo/bin:$PATH /Users/andrew/.cargo/bin/cargo-tauri build` builds the macOS `.app`, `.dmg`, and updater artifacts when run outside the Codex sandbox
-- `CI=true TAURI_SIGNING_PRIVATE_KEY="$TAURI_SIGNING_PRIVATE_KEY" TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" PATH=/Users/andrew/.cargo/bin:$PATH /Users/andrew/.cargo/bin/cargo-tauri build --bundles app` builds the current local `0.1.7` `.app`, `.app.tar.gz`, and `.sig`.
+- `CI=true PATH=/Users/andrew/.cargo/bin:$PATH /Users/andrew/.cargo/bin/cargo-tauri build --bundles app --config '{"bundle":{"createUpdaterArtifacts":false}}'` builds the current local `0.1.8` `.app` without updater signing artifacts for local smoke testing.
 - `hdiutil verify src-tauri/target/release/bundle/dmg/CopyDeck_0.1.6_aarch64.dmg` reports a valid checksum for the generated DMG.
-- `v0.1.6` GitHub Actions release run succeeded and uploaded signed updater artifacts plus `latest.json`.
+- `v0.1.7` GitHub Actions release run `26806110141` succeeded and uploaded signed updater artifacts plus `latest.json`.
 
 Current app artifact:
 
 - `src-tauri/target/release/bundle/macos/CopyDeck.app`
-- Current local app bundle reports `CFBundleShortVersionString` and `CFBundleVersion` as `0.1.7`.
+- Current local app bundle reports `CFBundleShortVersionString` and `CFBundleVersion` as `0.1.8`.
+- Latest GitHub release: `https://github.com/nesterov2u/copydeck/releases/tag/v0.1.7`
 
 Known build issue:
 
@@ -218,7 +233,7 @@ PATH=/Users/andrew/.cargo/bin:$PATH /Users/andrew/.cargo/bin/cargo-tauri build
 Build note:
 
 - File import, Google Docs import, and global shortcut code paths are removed from the app and package metadata. Keep local in-window shortcuts in `src/App.tsx`.
-- Compact mode and XLSX/CSV import settings are removed from UI and persisted state; store persistence version is currently `6`.
+- Compact mode and XLSX/CSV import settings are removed from UI and persisted state; store persistence version is currently `7`.
 - Auto-update releases require `TAURI_SIGNING_PRIVATE_KEY` in GitHub Secrets. The public key is safe in `src-tauri/tauri.conf.json`; the private key must stay out of the repository.
 - The updater key was rotated before `v0.1.5`; old `0.1.1` installs may discover newer updates but cannot install them because they embed the previous public key.
 
@@ -234,9 +249,9 @@ The current worktree is intentionally dirty with ongoing MVP/UI changes. Do not 
 
 Most likely next tasks:
 
-- test updating a local/new-key `0.1.5` app to published `0.1.6`
+- test updating a local/new-key app older than published `v0.1.7` to published `v0.1.7`
 - smoke-test the generated `.app` interactively on macOS
 - inspect whether macOS Dock/Finder icon cache shows the latest generated icon
 - improve translation UX: click-to-open/pin popover, manual translate action, clearer provider/error states
-- improve settings details for Translation and Storage
-- expand tests around store actions and clipboard-only import behavior
+- smoke-test `0.1.8` Storage recent lists / Clear Deck / empty Deck state in the native `.app`
+- prepare a future `v0.1.8` release when enough changes are ready

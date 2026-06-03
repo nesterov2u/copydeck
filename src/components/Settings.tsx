@@ -155,10 +155,48 @@ function StorageSettings() {
   const store = useCopyDeckStore();
 
   return (
-    <button className="clear-cache-button" onClick={store.clearCache}>
-      {t(store.interfaceLanguage, "clearCache")}
-    </button>
+    <>
+      <div className="settings-action-stack">
+        <button className="settings-action-button primary" onClick={store.clearCache}>
+          {t(store.interfaceLanguage, "clearCache")}
+        </button>
+        <button className="settings-action-button" onClick={store.clearDeck}>
+          {t(store.interfaceLanguage, "clearDeck")}
+        </button>
+      </div>
+
+      <div className="setting-row stack">
+        <span>{t(store.interfaceLanguage, "recentImports")}</span>
+        {store.recentImports.length ? (
+          <div className="recent-import-list">
+            {store.recentImports.map((item) => (
+              <div className="recent-import-item" key={item.id}>
+                <div className="recent-import-copy">
+                  <strong>{formatRecentImportDate(item.createdAt, store.interfaceLanguage)}</strong>
+                  <span>{item.preview}</span>
+                  <small>{t(store.interfaceLanguage, "blocks")}: {item.blockCount}</small>
+                </div>
+                <button onClick={() => store.restoreRecentImport(item.id)}>
+                  {t(store.interfaceLanguage, "restore")}
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="setting-note">{t(store.interfaceLanguage, "noRecentImports")}</div>
+        )}
+      </div>
+    </>
   );
+}
+
+function formatRecentImportDate(createdAt: number, interfaceLanguage: InterfaceLanguage) {
+  return new Intl.DateTimeFormat(interfaceLanguage === "ru" ? "ru-RU" : "en-US", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(new Date(createdAt));
 }
 
 function UpdateSettings() {

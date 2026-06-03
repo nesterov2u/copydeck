@@ -25,6 +25,14 @@ export type TextBlock = {
   translationStatus?: "idle" | "loading" | "ready" | "error" | "unavailable";
 };
 
+export type RecentImport = {
+  id: string;
+  createdAt: number;
+  blockCount: number;
+  preview: string;
+  blocks: TextBlock[];
+};
+
 export type ToastState = {
   message: string;
   tone: "success" | "info" | "error";

@@ -9,6 +9,7 @@ type TranslationKey =
   | "checking"
   | "checkingUpdates"
   | "clearCache"
+  | "clearDeck"
   | "clipboardEmpty"
   | "close"
   | "copy"
@@ -16,9 +17,12 @@ type TranslationKey =
   | "copied"
   | "copyDeckUpToDate"
   | "currentVersion"
+  | "currentDeckKept"
   | "custom"
   | "dark"
   | "deck"
+  | "deckCleared"
+  | "deckRestored"
   | "empty"
   | "english"
   | "french"
@@ -38,8 +42,15 @@ type TranslationKey =
   | "maximize"
   | "minimize"
   | "noUpdateAvailableYet"
+  | "noRecentImports"
   | "original"
   | "pinWindow"
+  | "recentImports"
+  | "replaceDeck"
+  | "replaceDeckConfirmBody"
+  | "replaceDeckConfirmTitle"
+  | "replaceDeckConfirmToast"
+  | "restore"
   | "russian"
   | "separator"
   | "separatedBlocks"
@@ -75,6 +86,7 @@ const messages: Record<InterfaceLanguage, Record<TranslationKey, string>> = {
     checking: "Checking...",
     checkingUpdates: "Checking updates",
     clearCache: "Clear Cache",
+    clearDeck: "Clear Deck",
     clipboardEmpty: "Clipboard is empty",
     close: "Close",
     copy: "Copy",
@@ -82,9 +94,12 @@ const messages: Record<InterfaceLanguage, Record<TranslationKey, string>> = {
     copied: "Copied",
     copyDeckUpToDate: "CopyDeck is up to date",
     currentVersion: "Current version {version}",
+    currentDeckKept: "Current deck kept",
     custom: "Custom",
     dark: "Dark",
     deck: "Deck",
+    deckCleared: "Deck cleared",
+    deckRestored: "Restored {count} blocks",
     empty: "Empty",
     english: "English",
     french: "French",
@@ -104,8 +119,16 @@ const messages: Record<InterfaceLanguage, Record<TranslationKey, string>> = {
     maximize: "Maximize",
     minimize: "Minimize",
     noUpdateAvailableYet: "No update available yet",
+    noRecentImports: "No recent imports yet",
     original: "Original",
     pinWindow: "Pin above windows",
+    recentImports: "Recent imports",
+    replaceDeck: "Replace Deck",
+    replaceDeckConfirmBody:
+      "Your current deck has copied or skipped blocks. Replace it with {count} new blocks from the clipboard?",
+    replaceDeckConfirmTitle: "Replace current deck?",
+    replaceDeckConfirmToast: "Confirm deck replacement",
+    restore: "Restore",
     russian: "Russian",
     separator: "Separator",
     separatedBlocks: "Separated into {count} blocks",
@@ -140,6 +163,7 @@ const messages: Record<InterfaceLanguage, Record<TranslationKey, string>> = {
     checking: "Проверка...",
     checkingUpdates: "Проверяю обновления",
     clearCache: "Очистить кэш",
+    clearDeck: "Очистить список",
     clipboardEmpty: "Буфер обмена пуст",
     close: "Закрыть",
     copy: "Скопировать",
@@ -147,9 +171,12 @@ const messages: Record<InterfaceLanguage, Record<TranslationKey, string>> = {
     copied: "Скопировано",
     copyDeckUpToDate: "CopyDeck обновлён",
     currentVersion: "Текущая версия {version}",
+    currentDeckKept: "Текущий список сохранён",
     custom: "Свой",
     dark: "Тёмная",
     deck: "Список",
+    deckCleared: "Список очищен",
+    deckRestored: "Восстановлено блоков: {count}",
     empty: "Пустая",
     english: "Английский",
     french: "Французский",
@@ -169,8 +196,16 @@ const messages: Record<InterfaceLanguage, Record<TranslationKey, string>> = {
     maximize: "Развернуть",
     minimize: "Свернуть",
     noUpdateAvailableYet: "Обновление пока недоступно",
+    noRecentImports: "Недавних импортов пока нет",
     original: "Оригинал",
     pinWindow: "Закрепить поверх окон",
+    recentImports: "Недавние списки",
+    replaceDeck: "Заменить список",
+    replaceDeckConfirmBody:
+      "В текущем списке уже есть скопированные или пропущенные блоки. Заменить его на новые блоки из буфера обмена: {count}?",
+    replaceDeckConfirmTitle: "Заменить текущий список?",
+    replaceDeckConfirmToast: "Подтвердите замену списка",
+    restore: "Вернуть",
     russian: "Русский",
     separator: "Разделитель",
     separatedBlocks: "Разделено на блоки: {count}",
